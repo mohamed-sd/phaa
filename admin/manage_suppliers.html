@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>إدارة الموردين - صيدليات الحياة</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-styles.css">
+  <style>
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 1200px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .stat-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .stat-icon.primary { background: rgba(8, 145, 178, 0.1); color: var(--primary); }
+    .stat-icon.success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .stat-icon.warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+    .stat-icon.danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+    .stat-info h3 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stat-info p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Supplier Form Card */
+    .supplier-form-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .supplier-form-header {
+      background: linear-gradient(135deg, var(--primary) 0%, #0e7490 100%);
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .supplier-form-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+    }
+
+    .supplier-form-body {
+      padding: 24px;
+    }
+
+    .form-collapsed .supplier-form-body {
+      display: none;
+    }
+
+    .toggle-btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .toggle-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* Form Layout */
+    .form-section {
+      margin-bottom: 20px;
+    }
+
+    .form-section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .form-grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .form-grid-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 1200px) {
+      .form-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      .form-grid, .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .form-group {
+      margin-bottom: 0;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .form-group label .required {
+      color: var(--danger);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(8, 145, 178, 0.1);
+    }
+
+    .form-group.full-width {
+      grid-column: span 2;
+    }
+
+    /* Form Footer */
+    .form-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 2px solid #e2e8f0;
+    }
+
+    .save-btn {
+      background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s;
+    }
+
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Suppliers List Card */
+    .suppliers-list-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .suppliers-list-header {
+      padding: 20px 24px;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .suppliers-list-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .filters-row {
+      display: flex;
+      gap: 12px;
+      padding: 16px 24px;
+      background: #f8fafc;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filters-row input,
+    .filters-row select {
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      min-width: 180px;
+    }
+
+    .filters-row input:focus,
+    .filters-row select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    /* Table Styles */
+    .table-container {
+      overflow-x: auto;
+      padding: 0 24px 24px;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .table th {
+      background: #f8fafc;
+      padding: 14px 12px;
+      text-align: right;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-bottom: 2px solid #e2e8f0;
+      white-space: nowrap;
+    }
+
+    .table td {
+      padding: 14px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+
+    .table tr:hover {
+      background: #f8fafc;
+    }
+
+    /* Balance colors */
+    .balance-positive { color: var(--danger); font-weight: 600; }
+    .balance-zero { color: var(--success); font-weight: 600; }
+
+    /* Contact info */
+    .contact-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .contact-info span {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .contact-info i {
+      width: 14px;
+      color: var(--primary);
+    }
+
+    /* Actions */
+    .actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-action {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .btn-action.view { background: #e0f2fe; color: var(--primary); }
+    .btn-action.edit { background: #fef3c7; color: #d97706; }
+    .btn-action.delete { background: #fee2e2; color: #dc2626; }
+
+    .btn-action:hover {
+      transform: scale(1.1);
+    }
+
+    /* Status badge */
+    .status-active { background: #d1fae5; color: #065f46; }
+    .status-inactive { background: #fee2e2; color: #991b1b; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state i {
+      font-size: 64px;
+      opacity: 0.3;
+      margin-bottom: 16px;
+    }
+
+    .empty-state p {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <script src="./sidebar.js"></script>
+
+  <main>
+    <div class="topbar">
+      <div class="topbar-title">
+        <i class="fas fa-truck"></i>
+        <span>إدارة الموردين</span>
+      </div>
+      <div class="user-section">
+        <div id="userAvatar"></div>
+        <span id="userDisplay">مرحباً</span>
+      </div>
+    </div>
+
+    <!-- الإحصائيات -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon primary"><i class="fas fa-users"></i></div>
+        <div class="stat-info">
+          <h3 id="totalSuppliers">0</h3>
+          <p>إجمالي الموردين</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+          <h3 id="activeSuppliers">0</h3>
+          <p>موردين نشطين</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon warning"><i class="fas fa-shopping-cart"></i></div>
+        <div class="stat-info">
+          <h3 id="totalPurchases">0 ر.س</h3>
+          <p>إجمالي المشتريات</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon danger"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="stat-info">
+          <h3 id="totalBalance">0 ر.س</h3>
+          <p>إجمالي المستحقات</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- فورم إضافة/تعديل مورد -->
+    <div class="supplier-form-card" id="supplierFormCard">
+      <div class="supplier-form-header" onclick="toggleForm()">
+        <h2><i class="fas fa-user-plus"></i> <span id="formTitle">إضافة مورد جديد</span></h2>
+        <button class="toggle-btn" id="toggleBtn">
+          <i class="fas fa-chevron-up" id="toggleIcon"></i>
+        </button>
+      </div>
+      <div class="supplier-form-body" id="supplierFormBody">
+        <form id="supplierForm">
+          <input type="hidden" id="supplierId">
+          
+          <!-- المعلومات الأساسية -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <i class="fas fa-info-circle"></i> المعلومات الأساسية
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>اسم المورد <span class="required">*</span></label>
+                <input type="text" id="name" required placeholder="اسم الشركة أو المؤسسة">
+              </div>
+              <div class="form-group">
+                <label>الشخص المسؤول</label>
+                <input type="text" id="contact_person" placeholder="اسم المسؤول">
+              </div>
+              <div class="form-group">
+                <label>الرقم الضريبي</label>
+                <input type="text" id="tax_number" placeholder="رقم السجل الضريبي">
+              </div>
+              <div class="form-group">
+                <label>الحالة</label>
+                <select id="is_active">
+                  <option value="1">نشط</option>
+                  <option value="0">غير نشط</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- معلومات الاتصال -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <i class="fas fa-phone"></i> معلومات الاتصال
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>رقم الهاتف الأساسي</label>
+                <input type="tel" id="phone" placeholder="05xxxxxxxx">
+              </div>
+              <div class="form-group">
+                <label>رقم الهاتف الثانوي</label>
+                <input type="tel" id="phone2" placeholder="05xxxxxxxx">
+              </div>
+              <div class="form-group">
+                <label>البريد الإلكتروني</label>
+                <input type="email" id="email" placeholder="example@domain.com">
+              </div>
+              <div class="form-group">
+                <label>المدينة</label>
+                <input type="text" id="city" placeholder="المدينة">
+              </div>
+            </div>
+          </div>
+
+          <!-- العنوان والملاحظات -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <i class="fas fa-map-marker-alt"></i> العنوان والملاحظات
+            </div>
+            <div class="form-grid form-grid-2">
+              <div class="form-group">
+                <label>العنوان التفصيلي</label>
+                <textarea id="address" rows="2" placeholder="العنوان بالتفصيل"></textarea>
+              </div>
+              <div class="form-group">
+                <label>ملاحظات</label>
+                <textarea id="notes" rows="2" placeholder="ملاحظات إضافية"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- أزرار الحفظ -->
+          <div class="form-footer">
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">
+              <i class="fas fa-redo"></i> إعادة تعيين
+            </button>
+            <button type="button" class="save-btn" onclick="saveSupplier()">
+              <i class="fas fa-save"></i> حفظ المورد
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- قائمة الموردين -->
+    <div class="suppliers-list-card">
+      <div class="suppliers-list-header">
+        <h2><i class="fas fa-list-alt"></i> سجل الموردين</h2>
+        <span class="badge badge-primary" id="suppliersCount">0 مورد</span>
+      </div>
+      
+      <div class="filters-row">
+        <input type="text" id="searchInput" placeholder="🔍 بحث بالاسم أو الهاتف..." onkeyup="filterSuppliers()">
+        <select id="filterStatus" onchange="filterSuppliers()">
+          <option value="">جميع الحالات</option>
+          <option value="1">✅ نشط</option>
+          <option value="0">❌ غير نشط</option>
+        </select>
+        <select id="filterCity" onchange="filterSuppliers()">
+          <option value="">جميع المدن</option>
+        </select>
+        <button class="btn btn-secondary" onclick="resetFilters()">
+          <i class="fas fa-times"></i> إعادة تعيين
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>اسم المورد</th>
+              <th>الشخص المسؤول</th>
+              <th>معلومات الاتصال</th>
+              <th>المدينة</th>
+              <th>إجمالي المشتريات</th>
+              <th>المدفوع</th>
+              <th>الرصيد المستحق</th>
+              <th>الحالة</th>
+              <th>الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="suppliersList">
+            <!-- يتم تحميل البيانات هنا -->
+          </tbody>
+        </table>
+      </div>
+
+      <div id="emptyState" class="empty-state" style="display:none;">
+        <i class="fas fa-truck"></i>
+        <p>لا يوجد موردين حالياً</p>
+        <small>ابدأ بإضافة مورد جديد من النموذج أعلاه</small>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal عرض تفاصيل المورد -->
+  <div id="detailsModal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-user"></i> تفاصيل المورد</h3>
+        <button class="modal-close" onclick="closeDetailsModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="supplierDetails">
+        <!-- تحميل التفاصيل -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeDetailsModal()">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <script src="auth-check.js"></script>
+  <script>
+    let suppliers = [];
+    let isFormCollapsed = false;
+    let editingId = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+      if (user.username) {
+        document.getElementById('userDisplay').textContent = user.full_name || user.username;
+        document.getElementById('userAvatar').textContent = (user.full_name || user.username).charAt(0).toUpperCase();
+      }
+      
+      loadSuppliers();
+    });
+
+    function toggleForm() {
+      isFormCollapsed = !isFormCollapsed;
+      const card = document.getElementById('supplierFormCard');
+      const icon = document.getElementById('toggleIcon');
+      
+      if (isFormCollapsed) {
+        card.classList.add('form-collapsed');
+        icon.className = 'fas fa-chevron-down';
+      } else {
+        card.classList.remove('form-collapsed');
+        icon.className = 'fas fa-chevron-up';
+      }
+    }
+
+    async function loadSuppliers() {
+      try {
+        const response = await fetch('../api.php?action=get_suppliers');
+        const data = await response.json();
+        
+        if (data.success) {
+          suppliers = data.data || [];
+          renderSuppliers();
+          updateStats();
+          populateCitiesFilter();
+        } else {
+          showToast(data.message || 'خطأ في تحميل البيانات', 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('خطأ في الاتصال بالخادم', 'error');
+      }
+    }
+
+    function updateStats() {
+      const active = suppliers.filter(s => s.is_active == 1).length;
+      const totalPurchases = suppliers.reduce((sum, s) => sum + parseFloat(s.total_purchases || 0), 0);
+      const totalBalance = suppliers.reduce((sum, s) => sum + parseFloat(s.balance || 0), 0);
+      
+      document.getElementById('totalSuppliers').textContent = suppliers.length;
+      document.getElementById('activeSuppliers').textContent = active;
+      document.getElementById('totalPurchases').textContent = totalPurchases.toLocaleString() + ' ر.س';
+      document.getElementById('totalBalance').textContent = totalBalance.toLocaleString() + ' ر.س';
+      document.getElementById('suppliersCount').textContent = suppliers.length + ' مورد';
+    }
+
+    function populateCitiesFilter() {
+      const cities = [...new Set(suppliers.map(s => s.city).filter(c => c))];
+      const select = document.getElementById('filterCity');
+      select.innerHTML = '<option value="">جميع المدن</option>';
+      cities.forEach(city => {
+        select.innerHTML += `<option value="${city}">${city}</option>`;
+      });
+    }
+
+    function renderSuppliers() {
+      const tbody = document.getElementById('suppliersList');
+      const emptyState = document.getElementById('emptyState');
+      
+      if (suppliers.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+      }
+      
+      emptyState.style.display = 'none';
+      
+      tbody.innerHTML = suppliers.map((supplier, index) => {
+        const balance = parseFloat(supplier.balance || 0);
+        const totalPurchases = parseFloat(supplier.total_purchases || 0);
+        const totalPaid = parseFloat(supplier.total_paid || 0);
+        
+        return `
+          <tr>
+            <td><strong style="color: var(--primary);">${supplier.id}</strong></td>
+            <td><strong>${supplier.name}</strong></td>
+            <td>${supplier.contact_person || '-'}</td>
+            <td>
+              <div class="contact-info">
+                ${supplier.phone ? `<span><i class="fas fa-phone"></i> ${supplier.phone}</span>` : ''}
+                ${supplier.phone2 ? `<span><i class="fas fa-phone"></i> ${supplier.phone2}</span>` : ''}
+                ${supplier.email ? `<span><i class="fas fa-envelope"></i> ${supplier.email}</span>` : ''}
+              </div>
+            </td>
+            <td>${supplier.city || '-'}</td>
+            <td><strong>${totalPurchases.toLocaleString()} ر.س</strong></td>
+            <td style="color: var(--success);">${totalPaid.toLocaleString()} ر.س</td>
+            <td class="${balance > 0 ? 'balance-positive' : 'balance-zero'}">
+              ${balance.toLocaleString()} ر.س
+            </td>
+            <td>
+              <span class="badge ${supplier.is_active == 1 ? 'status-active' : 'status-inactive'}">
+                ${supplier.is_active == 1 ? '✅ نشط' : '❌ غير نشط'}
+              </span>
+            </td>
+            <td>
+              <div class="actions">
+                <button class="btn-action view" onclick="viewSupplier(${supplier.id})" title="عرض التفاصيل">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn-action edit" onclick="editSupplier(${supplier.id})" title="تعديل">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-action delete" onclick="deleteSupplier(${supplier.id})" title="حذف">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterSuppliers() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const status = document.getElementById('filterStatus').value;
+      const city = document.getElementById('filterCity').value;
+      
+      let filtered = [...suppliers];
+      
+      if (search) {
+        filtered = filtered.filter(s => 
+          s.name.toLowerCase().includes(search) || 
+          (s.phone && s.phone.includes(search)) ||
+          (s.contact_person && s.contact_person.toLowerCase().includes(search))
+        );
+      }
+      
+      if (status !== '') {
+        filtered = filtered.filter(s => s.is_active == status);
+      }
+      
+      if (city) {
+        filtered = filtered.filter(s => s.city === city);
+      }
+      
+      renderFilteredSuppliers(filtered);
+    }
+
+    function renderFilteredSuppliers(filtered) {
+      const tbody = document.getElementById('suppliersList');
+      
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10" style="text-align: center; padding: 40px; color: var(--text-muted);">
+              <i class="fas fa-search" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
+              لا توجد نتائج مطابقة
+            </td>
+          </tr>
+        `;
+        return;
+      }
+      
+      tbody.innerHTML = filtered.map((supplier) => {
+        const balance = parseFloat(supplier.balance || 0);
+        const totalPurchases = parseFloat(supplier.total_purchases || 0);
+        const totalPaid = parseFloat(supplier.total_paid || 0);
+        
+        return `
+          <tr>
+            <td><strong style="color: var(--primary);">${supplier.id}</strong></td>
+            <td><strong>${supplier.name}</strong></td>
+            <td>${supplier.contact_person || '-'}</td>
+            <td>
+              <div class="contact-info">
+                ${supplier.phone ? `<span><i class="fas fa-phone"></i> ${supplier.phone}</span>` : ''}
+                ${supplier.phone2 ? `<span><i class="fas fa-phone"></i> ${supplier.phone2}</span>` : ''}
+                ${supplier.email ? `<span><i class="fas fa-envelope"></i> ${supplier.email}</span>` : ''}
+              </div>
+            </td>
+            <td>${supplier.city || '-'}</td>
+            <td><strong>${totalPurchases.toLocaleString()} ر.س</strong></td>
+            <td style="color: var(--success);">${totalPaid.toLocaleString()} ر.س</td>
+            <td class="${balance > 0 ? 'balance-positive' : 'balance-zero'}">
+              ${balance.toLocaleString()} ر.س
+            </td>
+            <td>
+              <span class="badge ${supplier.is_active == 1 ? 'status-active' : 'status-inactive'}">
+                ${supplier.is_active == 1 ? '✅ نشط' : '❌ غير نشط'}
+              </span>
+            </td>
+            <td>
+              <div class="actions">
+                <button class="btn-action view" onclick="viewSupplier(${supplier.id})" title="عرض">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn-action edit" onclick="editSupplier(${supplier.id})" title="تعديل">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-action delete" onclick="deleteSupplier(${supplier.id})" title="حذف">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function resetFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('filterStatus').value = '';
+      document.getElementById('filterCity').value = '';
+      renderSuppliers();
+    }
+
+    function resetForm() {
+      document.getElementById('supplierForm').reset();
+      document.getElementById('supplierId').value = '';
+      document.getElementById('formTitle').textContent = 'إضافة مورد جديد';
+      document.getElementById('is_active').value = '1';
+      editingId = null;
+    }
+
+    function editSupplier(id) {
+      const supplier = suppliers.find(s => s.id === id);
+      if (!supplier) return;
+      
+      editingId = id;
+      document.getElementById('formTitle').textContent = 'تعديل بيانات المورد';
+      document.getElementById('supplierId').value = supplier.id;
+      document.getElementById('name').value = supplier.name || '';
+      document.getElementById('contact_person').value = supplier.contact_person || '';
+      document.getElementById('tax_number').value = supplier.tax_number || '';
+      document.getElementById('is_active').value = supplier.is_active || '1';
+      document.getElementById('phone').value = supplier.phone || '';
+      document.getElementById('phone2').value = supplier.phone2 || '';
+      document.getElementById('email').value = supplier.email || '';
+      document.getElementById('city').value = supplier.city || '';
+      document.getElementById('address').value = supplier.address || '';
+      document.getElementById('notes').value = supplier.notes || '';
+      
+      // فتح الفورم إذا كان مغلقاً
+      if (isFormCollapsed) {
+        toggleForm();
+      }
+      
+      // التمرير للفورم
+      document.getElementById('supplierFormCard').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function saveSupplier() {
+      const name = document.getElementById('name').value.trim();
+      
+      if (!name) {
+        showToast('يرجى إدخال اسم المورد', 'error');
+        return;
+      }
+      
+      const data = {
+        name: name,
+        contact_person: document.getElementById('contact_person').value.trim(),
+        tax_number: document.getElementById('tax_number').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        phone2: document.getElementById('phone2').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        city: document.getElementById('city').value.trim(),
+        address: document.getElementById('address').value.trim(),
+        notes: document.getElementById('notes').value.trim(),
+        is_active: document.getElementById('is_active').value
+      };
+      
+      const supplierId = document.getElementById('supplierId').value;
+      
+      if (supplierId) {
+        data.id = supplierId;
+      }
+      
+      try {
+        const action = supplierId ? 'update_supplier' : 'add_supplier';
+        const response = await fetch(`../api.php?action=${action}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast(supplierId ? 'تم تحديث المورد بنجاح ✅' : 'تم إضافة المورد بنجاح ✅', 'success');
+          resetForm();
+          loadSuppliers();
+        } else {
+          showToast(result.message || 'حدث خطأ', 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('خطأ في الاتصال بالخادم', 'error');
+      }
+    }
+
+    function viewSupplier(id) {
+      const supplier = suppliers.find(s => s.id === id);
+      if (!supplier) return;
+      
+      const balance = parseFloat(supplier.balance || 0);
+      const totalPurchases = parseFloat(supplier.total_purchases || 0);
+      const totalPaid = parseFloat(supplier.total_paid || 0);
+      
+      document.getElementById('supplierDetails').innerHTML = `
+        <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, var(--primary) 0%, #0e7490 100%); color: white; border-radius: 12px; margin-bottom: 20px;">
+          <i class="fas fa-building" style="font-size: 40px; margin-bottom: 10px;"></i>
+          <h2 style="margin: 0; font-size: 24px;">${supplier.name}</h2>
+          ${supplier.contact_person ? `<p style="margin: 8px 0 0; opacity: 0.9;">${supplier.contact_person}</p>` : ''}
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+          <div style="background: #fef3c7; padding: 16px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 12px; color: #92400e; margin-bottom: 4px;">إجمالي المشتريات</div>
+            <div style="font-size: 20px; font-weight: 700; color: #92400e;">${totalPurchases.toLocaleString()} ر.س</div>
+          </div>
+          <div style="background: #d1fae5; padding: 16px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 12px; color: #065f46; margin-bottom: 4px;">المدفوع</div>
+            <div style="font-size: 20px; font-weight: 700; color: #065f46;">${totalPaid.toLocaleString()} ر.س</div>
+          </div>
+          <div style="background: ${balance > 0 ? '#fee2e2' : '#d1fae5'}; padding: 16px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 12px; color: ${balance > 0 ? '#991b1b' : '#065f46'}; margin-bottom: 4px;">المستحق</div>
+            <div style="font-size: 20px; font-weight: 700; color: ${balance > 0 ? '#991b1b' : '#065f46'};">${balance.toLocaleString()} ر.س</div>
+          </div>
+        </div>
+        
+        <div style="background: #f8fafc; padding: 16px; border-radius: 10px;">
+          <h4 style="margin: 0 0 12px; color: var(--text-primary);"><i class="fas fa-info-circle" style="color: var(--primary);"></i> معلومات الاتصال</h4>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+            <p style="margin: 0;"><i class="fas fa-phone" style="color: var(--primary); margin-left: 8px;"></i> <strong>الهاتف:</strong> ${supplier.phone || '-'}</p>
+            <p style="margin: 0;"><i class="fas fa-phone" style="color: var(--primary); margin-left: 8px;"></i> <strong>هاتف 2:</strong> ${supplier.phone2 || '-'}</p>
+            <p style="margin: 0;"><i class="fas fa-envelope" style="color: var(--primary); margin-left: 8px;"></i> <strong>البريد:</strong> ${supplier.email || '-'}</p>
+            <p style="margin: 0;"><i class="fas fa-city" style="color: var(--primary); margin-left: 8px;"></i> <strong>المدينة:</strong> ${supplier.city || '-'}</p>
+            <p style="margin: 0; grid-column: span 2;"><i class="fas fa-map-marker-alt" style="color: var(--primary); margin-left: 8px;"></i> <strong>العنوان:</strong> ${supplier.address || '-'}</p>
+            <p style="margin: 0;"><i class="fas fa-file-alt" style="color: var(--primary); margin-left: 8px;"></i> <strong>الرقم الضريبي:</strong> ${supplier.tax_number || '-'}</p>
+            <p style="margin: 0;"><i class="fas fa-calendar" style="color: var(--primary); margin-left: 8px;"></i> <strong>تاريخ الإضافة:</strong> ${supplier.created_at ? new Date(supplier.created_at).toLocaleDateString('ar-SA') : '-'}</p>
+          </div>
+          ${supplier.notes ? `<p style="margin: 12px 0 0; padding-top: 12px; border-top: 1px solid #e2e8f0;"><i class="fas fa-sticky-note" style="color: var(--primary); margin-left: 8px;"></i> <strong>ملاحظات:</strong> ${supplier.notes}</p>` : ''}
+        </div>
+      `;
+      document.getElementById('detailsModal').classList.add('show');
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('detailsModal').classList.remove('show');
+    }
+
+    async function deleteSupplier(id) {
+      const supplier = suppliers.find(s => s.id === id);
+      if (!supplier) return;
+      
+      if (!confirm(`⚠️ هل أنت متأكد من حذف المورد "${supplier.name}"؟\n\nلا يمكن التراجع عن هذا الإجراء.`)) {
+        return;
+      }
+      
+      try {
+        const response = await fetch('../api.php?action=delete_supplier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: id })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('تم حذف المورد بنجاح', 'success');
+          loadSuppliers();
+        } else {
+          showToast(result.message || 'حدث خطأ في الحذف', 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('خطأ في الاتصال بالخادم', 'error');
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast show ' + type;
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // إغلاق النوافذ عند الضغط خارجها
+    window.onclick = function(event) {
+      if (event.target.classList.contains('modal')) {
+        event.target.classList.remove('show');
+      }
+    };
+  </script>
+</body>
+</html>

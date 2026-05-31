@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>تسجيل الدخول - صيدليات الحياة</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 400px;
+      padding: 40px;
+      animation: slideUp 0.5s ease;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      color: #667eea;
+      font-size: 32px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .header p {
+      color: #64748b;
+      font-size: 14px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      color: #1e293b;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    .btn-login:active {
+      transform: translateY(0);
+    }
+    .btn-login:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .error {
+      color: #ef4444;
+      font-size: 13px;
+      margin-top: 8px;
+      padding: 10px;
+      background: #fee2e2;
+      border-radius: 6px;
+      display: none;
+    }
+    .error.show {
+      display: block;
+    }
+    .success {
+      color: #10b981;
+      font-size: 13px;
+      margin-top: 8px;
+      padding: 10px;
+      background: #d1fae5;
+      border-radius: 6px;
+      display: none;
+    }
+    .success.show {
+      display: block;
+    }
+    .demo-users {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 13px;
+      color: #64748b;
+      background: #f8fafc;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    .demo-users h3 {
+      color: #1e293b;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .demo-user {
+      margin: 8px 0;
+      padding: 8px;
+      background: white;
+      border-radius: 4px;
+      border-right: 3px solid #667eea;
+    }
+    .demo-user strong { color: #1e293b; }
+    .loading { display: none; }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="header">
+      <h1>🏥 صيدليات الحياة</h1>
+      <p>نظام الكاشير الحديث</p>
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label>اسم المستخدم</label>
+        <input type="text" id="username" name="username" placeholder="أدخل اسم المستخدم" required autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label>كلمة المرور</label>
+        <input type="password" id="password" name="password" placeholder="أدخل كلمة المرور" required autocomplete="current-password">
+      </div>
+
+      <div id="errorMsg" class="error"></div>
+      <div id="successMsg" class="success"></div>
+
+      <button type="submit" class="btn-login">
+        <span class="loading"><i class="fas fa-spinner fa-spin"></i></span>
+        <span class="text">تسجيل الدخول</span>
+      </button>
+    </form>
+
+    <div class="demo-users">
+      <h3>بيانات اختبار:</h3>
+      <div class="demo-user"><strong>Admin:</strong> admin / admin123</div>
+      <div class="demo-user"><strong>Cashier 1:</strong> cashier1 / cashier123</div>
+      <div class="demo-user"><strong>Cashier 2:</strong> cashier2 / cashier123</div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = './api.php';
+
+    async function callAPI(action, method = 'POST', data = null) {
+      const url = method === 'GET' ? `${API_BASE}?action=${action}` : `${API_BASE}?action=${action}`;
+      const opts = { method, credentials: 'include' };
+      if (method === 'POST' && data) {
+        opts.headers = { 'Content-Type': 'application/json' };
+        opts.body = JSON.stringify(data);
+      }
+      const res = await fetch(url, opts);
+      const json = await res.json();
+      return json;
+    }
+
+    // Check if already logged in
+    async function checkExistingSession() {
+      try {
+        const res = await callAPI('check_session', 'GET');
+        if (res.success) {
+          // User is already logged in, redirect based on role
+          const user = res.data;
+          if (user.role === 'admin' || user.role === 'manager') {
+            window.location.href = './admin/dashboard.html';
+          } else {
+            window.location.href = './index.html';
+          }
+        }
+      } catch (err) {
+        // No active session, continue
+      }
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const errorMsg = document.getElementById('errorMsg');
+      const successMsg = document.getElementById('successMsg');
+      const submitBtn = document.querySelector('.btn-login');
+      const loading = submitBtn.querySelector('.loading');
+      const text = submitBtn.querySelector('.text');
+
+      // Clear messages
+      errorMsg.classList.remove('show');
+      successMsg.classList.remove('show');
+
+      if (!username || !password) {
+        errorMsg.textContent = 'الرجاء ملء جميع الحقول';
+        errorMsg.classList.add('show');
+        return;
+      }
+
+      try {
+        submitBtn.disabled = true;
+        loading.style.display = 'inline';
+        text.textContent = 'جاري التحقق...';
+
+        const response = await callAPI('login', 'POST', {
+          username: username,
+          password: password
+        });
+
+        console.log('Login response:', response);
+
+        if (response.success) {
+          successMsg.textContent = 'تم تسجيل الدخول بنجاح. جاري التحويل...';
+          successMsg.classList.add('show');
+          
+          // Store user info in localStorage for easy access
+          localStorage.setItem('auth_user', JSON.stringify(response.data));
+          
+          // Redirect based on user role
+          const redirectUrl = (response.data.role === 'admin' || response.data.role === 'manager') 
+            ? './admin/dashboard.html' 
+            : './index.html';
+          
+          console.log('Redirecting to:', redirectUrl);
+          
+          // Redirect after 1.5 seconds
+          setTimeout(() => {
+            window.location.href = redirectUrl;
+          }, 1500);
+        } else {
+          errorMsg.textContent = response.message || 'خطأ في تسجيل الدخول';
+          errorMsg.classList.add('show');
+          submitBtn.disabled = false;
+          loading.style.display = 'none';
+          text.textContent = 'تسجيل الدخول';
+        }
+      } catch (err) {
+        errorMsg.textContent = 'خطأ: ' + err.message;
+        errorMsg.classList.add('show');
+        submitBtn.disabled = false;
+        loading.style.display = 'none';
+        text.textContent = 'تسجيل الدخول';
+      }
+    });
+
+    // Check session on page load
+    checkExistingSession();
+  </script>
+</body>
+</html>

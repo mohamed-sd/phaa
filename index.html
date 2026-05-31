@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="نظام إدارة المبيعات الحديث للصيدليات - Pharmacy POS System" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>نظام الكاشير - صيدليات الحياة</title>
+
+  <!-- Font Awesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    /* Additional inline styles for quick access */
+    .icon-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      background: var(--success-gradient);
+      color: white;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Alerts Section - Header Style */
+    .alerts-banner {
+      display: none;
+      background: linear-gradient(135deg, #fef2f2 0%, #fef9c3 100%);
+      border: 1px solid #fbbf24;
+      border-radius: var(--radius-md);
+      padding: 8px 14px;
+      max-width: 380px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .alerts-banner.show {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .alerts-banner .alert-icon-main {
+      color: #dc2626;
+      font-size: 18px;
+      animation: pulse 2s infinite;
+    }
+
+    .alerts-banner .alert-summary {
+      font-size: 12px;
+      font-weight: 600;
+      color: #b45309;
+      white-space: nowrap;
+    }
+
+    .alerts-banner .alert-count {
+      background: #dc2626;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* Alerts Dropdown */
+    .alerts-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 8px;
+      background: white;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--border-color);
+      min-width: 350px;
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 1000;
+    }
+
+    .alerts-banner:hover .alerts-dropdown,
+    .alerts-dropdown:hover {
+      display: block;
+    }
+
+    .alerts-dropdown-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      background: linear-gradient(135deg, #fef2f2 0%, #fef9c3 100%);
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+
+    .alerts-dropdown-header h4 {
+      color: #dc2626;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+    }
+
+    .alerts-content {
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .alert-item {
+      background: #f8fafc;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border-right: 3px solid #dc2626;
+      font-size: 12px;
+      line-height: 1.4;
+      transition: all 0.2s ease;
+    }
+
+    .alert-item:hover {
+      background: #f1f5f9;
+      transform: translateX(-2px);
+    }
+
+    .alert-item.expiring {
+      border-right-color: #f59e0b;
+    }
+
+    .alert-item.low-stock {
+      border-right-color: #eab308;
+    }
+
+    .alert-icon {
+      margin-left: 4px;
+    }
+
+    /* Header Action Buttons Enhancement */
+    #logoutBtn {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+      color: #b45309 !important;
+      transition: all 0.3s ease !important;
+    }
+
+    #logoutBtn:hover {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+      color: white !important;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    }
+
+    #userDisplay {
+      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+      color: #1d4ed8 !important;
+    }
+
+    /* Products Empty State */
+    .products-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-tertiary);
+    }
+
+    .products-empty i {
+      font-size: 64px;
+      margin-bottom: 20px;
+      color: var(--primary);
+      opacity: 0.3;
+    }
+
+    .products-empty p {
+      font-size: 16px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="logo-section">
+          <div class="logo-icon">
+            <i class="fas fa-prescription-bottle-medical"></i>
+          </div>
+          <div class="logo-text">
+            <h1>صيدليات الحياة</h1>
+            <div class="subtitle">نظام إدارة المبيعات الذكي</div>
+          </div>
+        </div>
+
+        <!-- Alerts Banner in Header -->
+        <div id="alertsBanner" class="alerts-banner">
+          <i class="fas fa-exclamation-triangle alert-icon-main"></i>
+          <span class="alert-summary">تنبيهات</span>
+          <span class="alert-count" id="alertsCount">0</span>
+          <div class="alerts-dropdown">
+            <div class="alerts-dropdown-header">
+              <h4><i class="fas fa-bell"></i> التنبيهات المهمة</h4>
+            </div>
+            <div id="alertsContent" class="alerts-content"></div>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <div class="search-box">
+            <i class="fas fa-search" style="color: var(--primary); font-size: 16px;"></i>
+            <input type="text" id="searchInput" placeholder="ابحث عن دواء أو منتج..." />
+          </div>
+
+          <div class="stat-badge" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #059669;">
+            <i class="fas fa-box-open"></i>
+            <span id="totalItems">0</span>
+            <span>منتج</span>
+          </div>
+
+          <div class="stat-badge" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #dc2626;">
+            <i class="fas fa-store-alt"></i>
+            <span>الفرع الرئيسي</span>
+          </div>
+
+          <div class="stat-badge" id="userDisplay" title="معلومات المستخدم">
+            <i class="fas fa-user-circle"></i>
+            <span id="userDisplayText">جاري التحميل...</span>
+          </div>
+
+          <button class="stat-badge" id="logoutBtn" title="تسجيل الخروج">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>خروج</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="layout">
+        <!-- Store Section (Left) -->
+        <section class="store">
+          <!-- Categories -->
+          <div class="categories-section">
+            <div class="categories-header">
+              <i class="fas fa-th-large"></i>
+              <h4>الفئات</h4>
+            </div>
+            <div class="categories" id="categories"></div>
+          </div>
+
+          <!-- Products -->
+          <div class="products-section">
+            <div class="section-header">
+              <h4>
+                <i class="fas fa-capsules"></i>
+                المنتجات المتاحة
+              </h4>
+              <div class="sort-controls">
+                <select id="sortSelect" title="الترتيب">
+                  <option value="name">📝 الترتيب حسب الاسم</option>
+                  <option value="price-asc">💰 السعر: الأقل أولاً</option>
+                  <option value="price-desc">💎 السعر: الأعلى أولاً</option>
+                  <option value="stock">📦 المخزون</option>
+                </select>
+              </div>
+            </div>
+            <div class="products-grid" id="products"></div>
+          </div>
+        </section>
+
+        <!-- Cart Sidebar (Right) -->
+        <aside class="cart" id="cartPane">
+          <div class="cart-header">
+            <i class="fas fa-shopping-cart"></i>
+            <h3>سلة المشتريات</h3>
+            <div class="cart-badge" id="cartCount" style="display: none;">0</div>
+          </div>
+
+          <div class="cart-list" id="cartList">
+            <div class="cart-empty">
+              <i class="fas fa-shopping-basket" style="font-size: 48px; color: var(--primary); opacity: 0.3; margin-bottom: 16px; display: block;"></i>
+              <span style="font-weight: 600; color: var(--text-secondary);">السلة فارغة</span>
+              <p style="font-size: 12px; margin-top: 8px; color: var(--text-tertiary);">أضف منتجات للبدء</p>
+            </div>
+          </div>
+
+          <div class="cart-summary">
+            <div class="summary-row label">
+              <span><i class="fas fa-receipt" style="margin-left: 6px; opacity: 0.7;"></i>المجموع</span>
+              <span id="subTotal">0.00</span>
+            </div>
+
+            <div class="summary-row label">
+              <span><i class="fas fa-percent" style="margin-left: 6px; opacity: 0.7;"></i>الضريبة (5%)</span>
+              <span id="tax">0.00</span>
+            </div>
+
+            <div class="summary-row total">
+              <span class="label"><i class="fas fa-coins" style="margin-left: 8px;"></i>الإجمالي</span>
+              <span class="value" id="grandTotal">0.00 ج.م</span>
+            </div>
+          </div>
+
+          <div class="cart-actions">
+            <button class="btn-success btn-primary" id="checkout" title="إتمام البيع">
+              <i class="fas fa-check-circle"></i> إتمام البيع
+            </button>
+            <button class="btn-primary" id="showInvoice" title="اضغط لطباعة الفاتورة">
+              <i class="fas fa-print"></i> طباعة الفاتورة
+            </button>
+            <button class="btn-secondary" id="clearCart" title="مسح السلة">
+              <i class="fas fa-trash-alt"></i> مسح السلة
+            </button>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <!-- Invoice Modal / Popup -->
+  <script id="invoiceTemplate" type="text/template">
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>فاتورة المبيعات</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', 'Arial', sans-serif; background: linear-gradient(135deg, #f0fdfa 0%, #f1f5f9 100%); padding: 20px; min-height: 100vh; }
+        .invoice-container { max-width: 650px; background: white; margin: 0 auto; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border-radius: 16px; position: relative; overflow: hidden; }
+        .invoice-container::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #0891b2, #06b6d4, #22d3ee); }
+        .header { text-align: center; border-bottom: 3px solid #0891b2; padding-bottom: 24px; margin-bottom: 24px; }
+        .header h1 { color: #0891b2; font-size: 32px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+        .header p { color: #64748b; font-size: 14px; font-weight: 500; }
+        .invoice-header { display: flex; justify-content: space-between; margin-bottom: 30px; font-size: 13px; color: #475569; background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%); padding: 20px; border-radius: 12px; }
+        .invoice-header strong { color: #0f172a; }
+        table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+        th { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: white; padding: 14px 16px; text-align: right; font-weight: 700; font-size: 14px; }
+        th:first-child { border-radius: 0 8px 8px 0; }
+        th:last-child { border-radius: 8px 0 0 8px; }
+        td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; text-align: right; font-size: 14px; }
+        tr:hover { background: #f8fafc; }
+        tr:last-child td { border-bottom: none; }
+        .summary { margin-top: 30px; display: flex; flex-direction: column; gap: 12px; }
+        .summary-row { display: flex; justify-content: space-between; font-weight: 600; padding: 8px 0; font-size: 15px; }
+        .summary-row.total { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: white; padding: 18px 20px; border-radius: 12px; font-size: 18px; margin-top: 8px; box-shadow: 0 4px 15px rgba(8, 145, 178, 0.3); }
+        .footer { text-align: center; margin-top: 35px; padding-top: 25px; border-top: 2px dashed #e2e8f0; color: #64748b; font-size: 13px; }
+        .footer p { margin-bottom: 8px; }
+        .footer p:first-child { font-size: 16px; font-weight: 600; color: #0891b2; }
+        .button-group { display: flex; gap: 12px; margin-top: 24px; justify-content: center; }
+        button { padding: 12px 28px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; transition: all 0.3s ease; }
+        .btn-print { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: white; box-shadow: 0 4px 15px rgba(8, 145, 178, 0.3); }
+        .btn-print:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(8, 145, 178, 0.4); }
+        .btn-close { background: #f1f5f9; color: #475569; border: 2px solid #e2e8f0; }
+        .btn-close:hover { background: #e2e8f0; }
+        @media print { .button-group { display: none; } body { background: white; padding: 0; } .invoice-container { box-shadow: none; } }
+      </style>
+    </head>
+    <body>
+      <div class="invoice-container">
+        <div class="header">
+          <h1>💊 صيدليات الحياة</h1>
+          <p>فاتورة مبيعات رسمية</p>
+        </div>
+        <div class="invoice-header">
+          <div>
+            <strong>رقم الفاتورة:</strong> <span id="invoiceNo">001</span><br/>
+            <strong>التاريخ:</strong> <span id="invoiceDate"></span><br/>
+            <strong>الوقت:</strong> <span id="invoiceTime"></span>
+          </div>
+          <div>
+            <strong>الفرع:</strong> الفرع الرئيسي<br/>
+            <strong>الكاشير:</strong> نظام محاسبي<br/>
+            <strong>رقم الجهاز:</strong> POS-001
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>الصنف</th>
+              <th>الكمية</th>
+              <th>السعر</th>
+              <th>الإجمالي</th>
+            </tr>
+          </thead>
+          <tbody id="invoiceItems"></tbody>
+        </table>
+        <div class="summary">
+          <div class="summary-row">
+            <span>المجموع قبل الضريبة:</span>
+            <span id="summarySubtotal">0.00 ج.م</span>
+          </div>
+          <div class="summary-row">
+            <span>الضريبة (5%):</span>
+            <span id="summaryTax">0.00 ج.م</span>
+          </div>
+          <div class="summary-row total">
+            <span>الإجمالي:</span>
+            <span id="summaryTotal">0.00 ج.م</span>
+          </div>
+        </div>
+        <div class="footer">
+          <p>شكراً لتعاملكم معنا! 💚</p>
+          <p>🌐 www.pharmacylife.com | 📱 +20-100-123-4567</p>
+          <p style="margin-top: 12px; font-size: 11px; color: #94a3b8;">هذه فاتورة إلكترونية معتمدة - يرجى الاحتفاظ بها</p>
+        </div>
+        <div class="button-group">
+          <button class="btn-print" onclick="window.print()">
+            🖨️ طباعة الفاتورة
+          </button>
+          <button class="btn-close" onclick="window.close()">
+            ✕ إغلاق
+          </button>
+        </div>
+      </div>
+      <script>
+        document.getElementById('invoiceDate').textContent = new Date().toLocaleDateString('ar-EG');
+        document.getElementById('invoiceTime').textContent = new Date().toLocaleTimeString('ar-EG');
+      </script>
+    </body>
+    </html>
+  </script>
+
+  <!-- External JavaScript -->
+  <script>
+    /**
+     * Authentication Check - Must run before app.js
+     */
+    const API_BASE = './api.php';
+    
+    async function checkAuthAndInitialize() {
+      try {
+        const res = await fetch(`${API_BASE}?action=check_session`);
+        const json = await res.json();
+        
+        if (!json.success) {
+          // Not authenticated, redirect to login
+          window.location.href = './login.php';
+          return false;
+        }
+        
+        // User is authenticated, store info and show name
+        const userData = json.data;
+        localStorage.setItem('auth_user', JSON.stringify(userData));
+        
+        // Update user display
+        const userDisplayText = document.getElementById('userDisplayText');
+        if (userDisplayText) {
+          userDisplayText.textContent = `مرحباً ${userData.full_name}`;
+        }
+        
+        // Set up logout button
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', logout);
+        }
+        
+        return true;
+      } catch (err) {
+        console.error('Auth check failed:', err);
+        window.location.href = './login.php';
+        return false;
+      }
+    }
+    
+    async function logout() {
+      try {
+        const res = await fetch(`${API_BASE}?action=logout`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success || !json.success) {
+          // Clear local data
+          localStorage.removeItem('auth_user');
+          localStorage.removeItem('pharmacy_cart_v1');
+          localStorage.removeItem('invoice_counter');
+          // Redirect to login
+          window.location.href = './login.php';
+        }
+      } catch (err) {
+        console.error('Logout failed:', err);
+        localStorage.removeItem('auth_user');
+        window.location.href = './login.php';
+      }
+    }
+    
+    // Check auth before loading app
+    window.addEventListener('load', function() {
+      checkAuthAndInitialize();
+      loadAndDisplayAlerts();
+    });
+  </script>
+  <script>
+    // Load and display alerts for cashier
+    async function loadAndDisplayAlerts() {
+      try {
+        const res = await fetch('./api.php?action=get_alerts');
+        const json = await res.json();
+        
+        if (json.success) {
+          displayCashierAlerts(json.data);
+        }
+      } catch (err) {
+        console.error('Error loading alerts:', err);
+      }
+    }
+
+    function displayCashierAlerts(alerts) {
+      const alertsContainer = document.getElementById('alertsContent');
+      const alertsBanner = document.getElementById('alertsBanner');
+      const alertsCount = document.getElementById('alertsCount');
+      
+      let alertsHTML = '';
+      let totalAlerts = 0;
+
+      // Expired products
+      if (alerts.expired && alerts.expired.length > 0) {
+        totalAlerts += alerts.expired.length;
+        alerts.expired.forEach(product => {
+          alertsHTML += `
+            <div class="alert-item">
+              <span class="alert-icon">⚠️</span>
+              <strong>${product.name}</strong> - منتهية الصلاحية (${product.expiry_date})
+            </div>
+          `;
+        });
+      }
+
+      // Expiring soon products
+      if (alerts.expiring_soon && alerts.expiring_soon.length > 0) {
+        totalAlerts += alerts.expiring_soon.length;
+        alerts.expiring_soon.forEach(product => {
+          const expiryDate = new Date(product.expiry_date);
+          const today = new Date();
+          const daysLeft = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+          
+          alertsHTML += `
+            <div class="alert-item expiring">
+              <span class="alert-icon">⏰</span>
+              <strong>${product.name}</strong> - ينتهي بعد ${daysLeft} يوم
+            </div>
+          `;
+        });
+      }
+
+      // Low stock products
+      if (alerts.low_stock && alerts.low_stock.length > 0) {
+        totalAlerts += alerts.low_stock.length;
+        alerts.low_stock.forEach(product => {
+          alertsHTML += `
+            <div class="alert-item low-stock">
+              <span class="alert-icon">📦</span>
+              <strong>${product.name}</strong> - المخزون: ${product.stock} وحدة فقط
+            </div>
+          `;
+        });
+      }
+
+      // Out of stock products
+      if (alerts.out_of_stock && alerts.out_of_stock.length > 0) {
+        totalAlerts += alerts.out_of_stock.length;
+        alerts.out_of_stock.forEach(product => {
+          alertsHTML += `
+            <div class="alert-item">
+              <span class="alert-icon">❌</span>
+              <strong>${product.name}</strong> - نفذت من المخزون
+            </div>
+          `;
+        });
+      }
+
+      if (totalAlerts > 0) {
+        alertsContainer.innerHTML = alertsHTML;
+        alertsCount.textContent = totalAlerts;
+        alertsBanner.classList.add('show');
+      } else {
+        alertsBanner.classList.remove('show');
+      }
+    }
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>

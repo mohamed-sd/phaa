@@ -1,0 +1,61 @@
+[2026-01-27 11:39:57] [ERROR] Duplicate entry '' for key 'barcode'
+[2026-01-27 11:40:03] [ERROR] Duplicate entry '' for key 'barcode'
+[2026-01-27 11:40:13] [ERROR] Duplicate entry '' for key 'barcode'
+[2026-01-27 12:44:14] [ERROR] Table 'pharmacy_pos.invoice_items' doesn't exist
+[2026-01-27 12:44:24] [ERROR] Table 'pharmacy_pos.invoice_items' doesn't exist
+[2026-01-27 12:44:26] [ERROR] Table 'pharmacy_pos.invoice_items' doesn't exist
+[2026-01-27 12:55:26] [ERROR] View 'pharmacy_pos.top_selling_products' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them
+[2026-01-27 12:57:12] [ERROR] Table 'pharmacy_pos.invoice_items' doesn't exist
+[2026-01-27 12:59:14] [ERROR] Table 'pharmacy_pos.invoice_items' doesn't exist
+[2026-01-27 12:59:29] [ERROR] Table 'pharmacy_pos.invoice_items' doesn't exist
+[2026-01-27 12:59:35] [ERROR] Table 'pharmacy_pos.invoice_items' doesn't exist
+[2026-01-27 12:59:41] [ERROR] Table 'pharmacy_pos.invoice_items' doesn't exist
+[2026-01-27 13:04:58] [ERROR] Table 'pharmacy_pos.invoice_items' doesn't exist
+[2026-01-27 13:05:01] [ERROR] Table 'pharmacy_pos.invoice_items' doesn't exist
+[2026-01-27 13:24:10] [ERROR] Table 'pharmacy_pos.pharmacy_settings' doesn't exist
+[2026-01-27 13:24:24] [ERROR] Table 'pharmacy_pos.pharmacy_settings' doesn't exist
+[2026-01-29 14:09:46] [ERROR] MySQL server has gone away
+[2026-01-29 14:28:12] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:49:13] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:51:51] [ERROR] Unknown column 'stock_strips' in 'field list'
+[2026-01-29 14:54:46] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:55:27] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:55:32] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:56:18] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:56:27] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:56:30] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:58:14] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:00:23] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:00:33] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:00:42] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:00:45] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:00:46] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:03:26] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:03:51] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:04:46] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:04:47] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:04:48] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:04:48] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:05:05] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:05:17] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:05:23] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:06:10] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:06:12] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:11:19] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:11:38] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:17:58] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:30:55] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:31:02] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 15:31:40] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:08:17] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:09:42] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:11:37] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:11:51] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:13:21] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:13:30] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:14:17] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:14:25] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-29 14:14:42] [ERROR] Unknown column 'stock_strips' in 'where clause'
+[2026-01-31 18:05:13] [ERROR] Cannot delete or update a parent row: a foreign key constraint fails (`pharmacy_pos`.`invoice_items`, CONSTRAINT `invoice_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`))
+[2026-01-31 18:19:46] [ERROR] Table 'pharmacy_pos.top_selling_products' doesn't exist
+[2026-01-31 19:00:49] [ERROR] Column count doesn't match value count at row 1

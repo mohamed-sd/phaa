@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>الإعدادات - صيدليات الحياة</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-styles.css">
+  <style>
+    /* Page Specific Styles */
+    .settings-grid {
+      display: grid;
+      gap: 24px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+
+    .info-box {
+      background: var(--primary-light);
+      border: 1px solid var(--primary);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--primary-dark);
+    }
+
+    .backup-card {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .backup-card h4 {
+      margin: 0 0 12px;
+      color: var(--gray-800);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .backup-card p {
+      color: var(--gray-500);
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .warning-card {
+      background: var(--warning-light);
+      border: 1px solid var(--warning);
+    }
+
+    .success-toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--success);
+      color: white;
+      padding: 16px 24px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      z-index: 9999;
+      display: none;
+      animation: slideDown 0.3s ease;
+    }
+
+    .success-toast.show {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .success-toast.error {
+      background: var(--danger);
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <script src="./sidebar.js"></script>
+
+  <div id="successToast" class="success-toast">
+    <i class="fas fa-check-circle"></i>
+    <span id="toastMessage">تم حفظ الإعدادات بنجاح</span>
+  </div>
+
+  <main>
+    <div class="topbar">
+      <h1><i class="fas fa-cog"></i> الإعدادات</h1>
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-name" id="userDisplay">مرحباً</div>
+      </div>
+    </div>
+
+    <form id="settingsForm">
+      <div class="settings-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fas fa-store"></i> معلومات الصيدلية</h3>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">اسم الصيدلية *</label>
+                <input type="text" id="pharmacyName" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">رقم الترخيص</label>
+                <input type="text" id="licenseNumber" class="form-control">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">رقم الهاتف *</label>
+                <input type="tel" id="phone" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">البريد الإلكتروني</label>
+                <input type="email" id="email" class="form-control">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">العنوان *</label>
+              <input type="text" id="address" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">وصف الصيدلية</label>
+              <textarea id="description" class="form-control" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fas fa-receipt"></i> إعدادات الفواتير</h3>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">ضريبة القيمة المضافة (%)</label>
+                <input type="number" id="taxRate" class="form-control" min="0" max="100" step="0.1">
+              </div>
+              <div class="form-group">
+                <label class="form-label">رمز العملة *</label>
+                <input type="text" id="currencySymbol" class="form-control" required maxlength="10">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">ملاحظات الفاتورة (افتراضي)</label>
+              <textarea id="invoiceNotes" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fas fa-bell"></i> إعدادات التنبيهات</h3>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">حد المخزون المنخفض</label>
+              <input type="number" id="lowStockThreshold" class="form-control" min="1">
+              <small class="text-muted" style="display: block; margin-top: 6px;">
+                سيتم التنبيه عندما يقل المخزون عن هذا الحد
+              </small>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fas fa-database"></i> النسخ الاحتياطي</h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted" style="margin-bottom: 20px;">
+              احتفظ بنسخة احتياطية من قاعدة البيانات كاملة بشكل دوري لضمان عدم فقدانها
+            </p>
+            
+            <div class="backup-card">
+              <h4><i class="fas fa-download" style="color: var(--primary);"></i> تصدير قاعدة البيانات</h4>
+              <p>سيتم تصدير جميع الجداول والبيانات في ملف SQL واحد</p>
+              <button type="button" class="btn btn-primary" onclick="exportDatabase()" id="exportBtn">
+                <i class="fas fa-download"></i> تصدير قاعدة البيانات كاملة
+              </button>
+            </div>
+            
+            <div class="backup-card warning-card">
+              <h4><i class="fas fa-upload" style="color: var(--warning);"></i> استيراد قاعدة البيانات</h4>
+              <p><strong style="color: var(--danger);">تحذير:</strong> سيتم استبدال جميع البيانات الحالية بالبيانات المستوردة</p>
+              <input type="file" id="importFile" accept=".sql" style="display:none" onchange="handleImportFile(this)">
+              <button type="button" class="btn btn-warning" onclick="document.getElementById('importFile').click()" id="importBtn">
+                <i class="fas fa-upload"></i> اختيار ملف SQL للاستيراد
+              </button>
+              <div id="importStatus" style="margin-top: 12px; display: none;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 24px; text-align: center;">
+        <button type="submit" class="btn btn-primary btn-lg">
+          <i class="fas fa-save"></i> حفظ جميع الإعدادات
+        </button>
+      </div>
+    </form>
+  </main>
+
+  <script src="./auth-check.js"></script>
+  <script>
+    const apiBase = '../api.php';
+
+    async function checkAuthAndRedirect() {
+      try {
+        const res = await fetch('../api.php?action=check_session', { credentials: 'include' });
+        const json = await res.json();
+        
+        if (!json.success) {
+          window.location.href = '../login.php';
+          return false;
+        }
+        
+        const user = json.data;
+        if (user.role !== 'admin' && user.role !== 'manager') {
+          window.location.href = '../index.html';
+          return false;
+        }
+        
+        const initials = user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2);
+        document.getElementById('userAvatar').textContent = initials;
+        document.getElementById('userDisplay').textContent = user.full_name;
+        
+        return true;
+      } catch (err) {
+        window.location.href = '../login.php';
+        return false;
+      }
+    }
+
+    async function callAPI(action, method='GET', data=null) {
+      const url = `${apiBase}?action=${action}`;
+      const opts = { method, credentials: 'include' };
+      if (method === 'POST' && data) {
+        opts.headers = {'Content-Type':'application/json'};
+        opts.body = JSON.stringify(data);
+      }
+      const res = await fetch(url, opts);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'خطأ');
+      return json.data;
+    }
+
+    async function loadSettings() {
+      try {
+        const settings = await callAPI('get_settings');
+        
+        if (settings.pharmacy_name) document.getElementById('pharmacyName').value = settings.pharmacy_name;
+        if (settings.license_number) document.getElementById('licenseNumber').value = settings.license_number;
+        if (settings.phone) document.getElementById('phone').value = settings.phone;
+        if (settings.email) document.getElementById('email').value = settings.email;
+        if (settings.address) document.getElementById('address').value = settings.address;
+        if (settings.description) document.getElementById('description').value = settings.description;
+        if (settings.tax_rate) document.getElementById('taxRate').value = settings.tax_rate;
+        if (settings.currency_symbol) document.getElementById('currencySymbol').value = settings.currency_symbol;
+        if (settings.invoice_notes) document.getElementById('invoiceNotes').value = settings.invoice_notes;
+        if (settings.low_stock_threshold) document.getElementById('lowStockThreshold').value = settings.low_stock_threshold;
+      } catch (err) {
+        console.error('خطأ في تحميل الإعدادات:', err);
+      }
+    }
+
+    async function saveSettings() {
+      const settings = {
+        pharmacy_name: document.getElementById('pharmacyName').value.trim(),
+        license_number: document.getElementById('licenseNumber').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        address: document.getElementById('address').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        tax_rate: document.getElementById('taxRate').value,
+        currency_symbol: document.getElementById('currencySymbol').value.trim(),
+        invoice_notes: document.getElementById('invoiceNotes').value.trim(),
+        low_stock_threshold: document.getElementById('lowStockThreshold').value
+      };
+
+      try {
+        await callAPI('update_settings', 'POST', settings);
+        showToast('تم حفظ الإعدادات بنجاح', 'success');
+      } catch (err) {
+        showToast('خطأ في حفظ الإعدادات: ' + err.message, 'error');
+      }
+    }
+
+    async function exportDatabase() {
+      const btn = document.getElementById('exportBtn');
+      const originalText = btn.innerHTML;
+      
+      try {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التصدير...';
+        btn.disabled = true;
+        
+        const result = await callAPI('export_database');
+        
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+        const filename = `${result.database_name}_backup_${dateStr}_${timeStr}.sql`;
+        
+        const blob = new Blob([result.sql_content], { type: 'application/sql' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast(`تم تصدير قاعدة البيانات بنجاح! (${result.tables_count} جدول)`, 'success');
+      } catch (err) {
+        showToast('خطأ في تصدير قاعدة البيانات: ' + err.message, 'error');
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+    
+    function handleImportFile(input) {
+      const file = input.files[0];
+      if (!file) return;
+      
+      if (!file.name.endsWith('.sql')) {
+        showToast('يجب اختيار ملف بامتداد .sql', 'error');
+        input.value = '';
+        return;
+      }
+      
+      if (!confirm(`هل أنت متأكد من استيراد الملف:\n${file.name}\n\nتحذير: سيتم استبدال جميع البيانات الحالية!`)) {
+        input.value = '';
+        return;
+      }
+      
+      importDatabase(file);
+      input.value = '';
+    }
+    
+    async function importDatabase(file) {
+      const btn = document.getElementById('importBtn');
+      const statusDiv = document.getElementById('importStatus');
+      const originalText = btn.innerHTML;
+      
+      try {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري القراءة...';
+        btn.disabled = true;
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري قراءة الملف...';
+        statusDiv.style.color = 'var(--gray-500)';
+        
+        const sqlContent = await file.text();
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري استيراد البيانات...';
+        
+        const url = `${apiBase}?action=import_database`;
+        const response = await fetch(url, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sql_content: sqlContent })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          statusDiv.innerHTML = `<i class="fas fa-check-circle" style="color: var(--success);"></i> ${result.message}`;
+          statusDiv.style.color = 'var(--success)';
+          showToast(result.message, 'success');
+          setTimeout(() => loadSettings(), 1000);
+        } else {
+          statusDiv.innerHTML = `<i class="fas fa-exclamation-circle" style="color: var(--danger);"></i> ${result.message}`;
+          statusDiv.style.color = 'var(--danger)';
+          showToast('خطأ: ' + result.message, 'error');
+        }
+      } catch (err) {
+        statusDiv.innerHTML = `<i class="fas fa-exclamation-circle" style="color: var(--danger);"></i> خطأ: ${err.message}`;
+        statusDiv.style.color = 'var(--danger)';
+        showToast('خطأ في استيراد قاعدة البيانات: ' + err.message, 'error');
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+    
+    function showToast(message, type) {
+      const toast = document.getElementById('successToast');
+      const msgEl = document.getElementById('toastMessage');
+      
+      msgEl.textContent = message;
+      toast.classList.remove('error');
+      if (type === 'error') toast.classList.add('error');
+      
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 4000);
+    }
+
+    document.getElementById('settingsForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      saveSettings();
+    });
+
+    window.addEventListener('load', async () => {
+      const authOk = await checkAuthAndRedirect();
+      if (authOk) {
+        await loadSettings();
+      }
+    });
+  </script>
+</body>
+</html>

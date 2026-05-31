@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>إدارة الفئات - صيدليات الحياة</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-styles.css">
+  <style>
+    /* Page Specific Styles */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    td .form-control {
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <script src="./sidebar.js"></script>
+
+  <main>
+    <div class="topbar">
+      <h1><i class="fas fa-list"></i> إدارة الفئات</h1>
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-name" id="userDisplay">مرحباً</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-plus-circle"></i> إضافة فئة جديدة</h3>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">اسم الفئة</label>
+            <input type="text" id="catName" class="form-control" placeholder="اسم الفئة">
+          </div>
+          <div class="form-group">
+            <label class="form-label">الوصف</label>
+            <input type="text" id="catDesc" class="form-control" placeholder="وصف (اختياري)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">الأيقونة</label>
+            <input type="text" id="catIcon" class="form-control" placeholder="مثال: fa-pills">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button id="addCatBtn" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة فئة</button>
+        </div>
+        <p class="text-muted" style="margin-top: 12px; font-size: 13px;"><i class="fas fa-info-circle"></i> اضغط على حفظ لحفظ التغييرات على الفئة</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-th-list"></i> الفئات المسجلة</h3>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table" id="catsTable">
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>الوصف</th>
+                <th>الأيقونة</th>
+                <th>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./auth-check.js"></script>
+  <script>
+    async function checkAuthAndRedirect() {
+      try {
+        const res = await fetch('../api.php?action=check_session', { credentials: 'include' });
+        const json = await res.json();
+        
+        if (!json.success) {
+          window.location.href = '../login.php';
+          return false;
+        }
+        
+        const user = json.data;
+        if (user.role !== 'admin' && user.role !== 'manager') {
+          window.location.href = '../index.html';
+          return false;
+        }
+        
+        const initials = user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2);
+        document.getElementById('userAvatar').textContent = initials;
+        document.getElementById('userDisplay').textContent = user.full_name;
+        
+        return true;
+      } catch (err) {
+        window.location.href = '../login.php';
+        return false;
+      }
+    }
+
+    let authOk = false;
+    window.addEventListener('load', async () => {
+      authOk = await checkAuthAndRedirect();
+      if (authOk) loadPageContent();
+    });
+
+    const apiBase = '../api.php';
+
+    async function callAPI(action, method='GET', data=null) {
+      const url = `${apiBase}?action=${action}`;
+      const opts = { method, credentials: 'include' };
+      if (method === 'POST' && data) {
+        opts.headers = {'Content-Type':'application/json'};
+        opts.body = JSON.stringify(data);
+      }
+      const res = await fetch(url, opts);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'خطأ');
+      return json.data;
+    }
+
+    async function loadCategories() {
+      try {
+        const cats = await callAPI('get_categories');
+        const tbody = document.querySelector('#catsTable tbody');
+        tbody.innerHTML = '';
+        cats.forEach(c => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><input data-id="${c.id}" class="edit-name form-control" value="${escapeHtml(c.name)}"></td>
+            <td><input data-id="${c.id}" class="edit-desc form-control" value="${escapeHtml(c.description||'')}"></td>
+            <td><input data-id="${c.id}" class="edit-icon form-control" value="${escapeHtml(c.icon||'')}"></td>
+            <td>
+              <div class="btn-group">
+                <button class="btn btn-primary btn-sm" data-action="save" data-id="${c.id}"><i class="fas fa-save"></i></button>
+                <button class="btn btn-danger btn-sm" data-action="delete" data-id="${c.id}"><i class="fas fa-trash"></i></button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        alert('خطأ في جلب الفئات: ' + err.message);
+      }
+    }
+
+    function escapeHtml(s){return String(s||'').replace(/[&<>"']/g, (c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);}
+
+    document.getElementById('addCatBtn').addEventListener('click', async ()=>{
+      const name = document.getElementById('catName').value.trim();
+      const desc = document.getElementById('catDesc').value.trim();
+      const icon = document.getElementById('catIcon').value.trim();
+      if (!name) { alert('أدخل اسم الفئة'); return; }
+      try {
+        await callAPI('add_category', 'POST', { name, description: desc, icon });
+        document.getElementById('catName').value='';
+        document.getElementById('catDesc').value='';
+        document.getElementById('catIcon').value='';
+        await loadCategories();
+        alert('تمت إضافة الفئة');
+      } catch (err) { alert('خطأ: '+err.message); }
+    });
+
+    document.querySelector('#catsTable').addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const action = btn.getAttribute('data-action');
+      const id = btn.getAttribute('data-id');
+      
+      if (action === 'save') {
+        const name = document.querySelector(`.edit-name[data-id='${id}']`).value.trim();
+        const desc = document.querySelector(`.edit-desc[data-id='${id}']`).value.trim();
+        const icon = document.querySelector(`.edit-icon[data-id='${id}']`).value.trim();
+        if (!name) { alert('الاسم مطلوب'); return; }
+        try { 
+          await callAPI('update_category', 'POST', { id: parseInt(id), name, description: desc, icon }); 
+          alert('تم الحفظ'); 
+          await loadCategories(); 
+        } catch (err) { alert('خطأ: '+err.message); }
+      }
+      
+      if (action === 'delete') {
+        if (!confirm('هل تريد حذف هذه الفئة؟')) return;
+        try { 
+          await callAPI('delete_category', 'POST', { id: parseInt(id) }); 
+          alert('تم الحذف'); 
+          await loadCategories(); 
+        } catch (err) { alert('خطأ: '+err.message); }
+      }
+    });
+
+    async function loadPageContent() {
+      await loadCategories();
+    }
+  </script>
+</body>
+</html>

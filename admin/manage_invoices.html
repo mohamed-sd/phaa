@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>إدارة الفواتير - صيدليات الحياة</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-styles.css">
+  <style>
+    /* Page Specific Styles */
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .invoice-number {
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .amount {
+      font-weight: 600;
+      color: var(--success);
+    }
+
+    .date-time {
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+
+    .payment-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .payment-badge.cash {
+      background: var(--success-light);
+      color: var(--success);
+    }
+
+    .payment-badge.card {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .payment-badge.other {
+      background: #f3e8ff;
+      color: #9333ea;
+    }
+
+    .invoice-detail-row {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .invoice-detail-row strong {
+      color: var(--gray-500);
+      font-weight: 500;
+    }
+
+    .invoice-items-table {
+      margin-top: 20px;
+    }
+
+    .invoice-items-table h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--gray-800);
+    }
+  </style>
+</head>
+<body>
+  <script src="./sidebar.js"></script>
+
+  <main>
+    <div class="topbar">
+      <h1><i class="fas fa-receipt"></i> إدارة الفواتير</h1>
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-name" id="userDisplay">مرحباً</div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: var(--primary-light); color: var(--primary);">
+          <i class="fas fa-file-invoice"></i>
+        </div>
+        <div class="stat-info">
+          <h3>إجمالي الفواتير</h3>
+          <p id="totalInvoices">0</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: var(--success-light); color: var(--success);">
+          <i class="fas fa-coins"></i>
+        </div>
+        <div class="stat-info">
+          <h3>إجمالي المبيعات</h3>
+          <p id="totalSales">0 ر.س</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: var(--warning-light); color: var(--warning);">
+          <i class="fas fa-calendar-day"></i>
+        </div>
+        <div class="stat-info">
+          <h3>فواتير اليوم</h3>
+          <p id="todayInvoices">0</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: #f3e8ff; color: #9333ea;">
+          <i class="fas fa-chart-line"></i>
+        </div>
+        <div class="stat-info">
+          <h3>مبيعات اليوم</h3>
+          <p id="todaySales">0 ر.س</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-filter"></i> فلترة الفواتير</h3>
+      </div>
+      <div class="card-body">
+        <div class="filters-grid">
+          <div class="form-group">
+            <label class="form-label">من تاريخ</label>
+            <input type="date" id="fromDate" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">إلى تاريخ</label>
+            <input type="date" id="toDate" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">طريقة الدفع</label>
+            <select id="paymentMethod" class="form-control">
+              <option value="">الكل</option>
+              <option value="نقدي">نقدي</option>
+              <option value="بطاقة">بطاقة</option>
+              <option value="تحويل">تحويل</option>
+            </select>
+          </div>
+          <div class="form-group" style="display: flex; gap: 8px; align-items: flex-end;">
+            <button class="btn btn-primary" onclick="applyFilters()"><i class="fas fa-search"></i> بحث</button>
+            <button class="btn btn-secondary" onclick="resetFilters()"><i class="fas fa-redo"></i> إعادة</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3><i class="fas fa-list"></i> الفواتير</h3>
+        <span class="text-muted" id="paginationInfo">عرض 0 من 0</span>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table" id="invoicesTable">
+            <thead>
+              <tr>
+                <th>رقم الفاتورة</th>
+                <th>التاريخ والوقت</th>
+                <th>المبلغ الإجمالي</th>
+                <th>طريقة الدفع</th>
+                <th>الكاشير</th>
+                <th>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="invoicesTableBody">
+              <tr>
+                <td colspan="6" class="text-center" style="padding: 40px;">
+                  <div class="loading-spinner"></div>
+                  <p class="text-muted">جاري تحميل الفواتير...</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Invoice Details Modal -->
+  <div id="invoiceModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-file-invoice"></i> تفاصيل الفاتورة</h3>
+        <button class="modal-close" onclick="closeInvoiceModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="invoiceDetailsBody">
+        <div class="text-center" style="padding: 40px;">
+          <div class="loading-spinner"></div>
+          <p class="text-muted">جاري تحميل التفاصيل...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./auth-check.js"></script>
+  <script>
+    async function checkAuthAndRedirect() {
+      try {
+        const res = await fetch('../api.php?action=check_session', { credentials: 'include' });
+        const json = await res.json();
+        
+        if (!json.success) {
+          window.location.href = '../login.php';
+          return false;
+        }
+        
+        const user = json.data;
+        if (user.role !== 'admin' && user.role !== 'manager') {
+          window.location.href = '../index.html';
+          return false;
+        }
+        
+        const initials = user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2);
+        document.getElementById('userAvatar').textContent = initials;
+        document.getElementById('userDisplay').textContent = user.full_name;
+        
+        return true;
+      } catch (err) {
+        window.location.href = '../login.php';
+        return false;
+      }
+    }
+
+    let authOk = false;
+    window.addEventListener('load', async () => {
+      authOk = await checkAuthAndRedirect();
+      if (authOk) {
+        initializePage();
+      }
+    });
+
+    const apiBase = '../api.php';
+    let allInvoices = [];
+    let filteredInvoices = [];
+    let currencySymbol = 'ر.س';
+
+    async function callAPI(action, method='GET', data=null) {
+      const url = `${apiBase}?action=${action}`;
+      const opts = { method, credentials: 'include' };
+      if (method === 'POST' && data) {
+        opts.headers = {'Content-Type':'application/json'};
+        opts.body = JSON.stringify(data);
+      }
+      const res = await fetch(url, opts);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'خطأ');
+      return json.data;
+    }
+
+    async function loadSettings() {
+      try {
+        const settings = await callAPI('get_settings');
+        currencySymbol = settings.currency_symbol || 'ر.س';
+      } catch (err) {
+        currencySymbol = 'ر.س';
+      }
+    }
+
+    async function initializePage() {
+      await loadSettings();
+      
+      const today = new Date();
+      const lastMonth = new Date(today);
+      lastMonth.setDate(today.getDate() - 30);
+      
+      document.getElementById('toDate').value = formatDate(today);
+      document.getElementById('fromDate').value = formatDate(lastMonth);
+      
+      await loadInvoices();
+      calculateStats();
+    }
+
+    async function loadInvoices() {
+      try {
+        const response = await callAPI('get_invoices');
+        allInvoices = response.invoices || [];
+        filteredInvoices = [...allInvoices];
+        renderInvoices();
+        calculateStats();
+      } catch (err) {
+        showError('خطأ في جلب الفواتير: ' + err.message);
+      }
+    }
+
+    function renderInvoices() {
+      const tbody = document.getElementById('invoicesTableBody');
+      
+      if (filteredInvoices.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>لا توجد فواتير</p>
+              </div>
+            </td>
+          </tr>
+        `;
+        document.getElementById('paginationInfo').textContent = 'عرض 0 من 0';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      filteredInvoices.forEach(invoice => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="invoice-number">${escapeHtml(invoice.invoice_number)}</span></td>
+          <td><span class="date-time">${formatDateTime(invoice.created_at)}</span></td>
+          <td><span class="amount">${parseFloat(invoice.total_amount).toFixed(2)} ${currencySymbol}</span></td>
+          <td><span class="payment-badge ${getPaymentClass(invoice.payment_method)}">${escapeHtml(invoice.payment_method || 'نقدي')}</span></td>
+          <td>كاشير ${invoice.cashier_id}</td>
+          <td>
+            <button class="btn btn-primary btn-sm" onclick="viewInvoiceDetails(${invoice.id})">
+              <i class="fas fa-eye"></i> عرض
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('paginationInfo').textContent = `عرض ${filteredInvoices.length} من ${allInvoices.length}`;
+    }
+
+    function applyFilters() {
+      const fromDate = document.getElementById('fromDate').value;
+      const toDate = document.getElementById('toDate').value;
+      const paymentMethod = document.getElementById('paymentMethod').value;
+
+      filteredInvoices = allInvoices.filter(invoice => {
+        let matches = true;
+        if (fromDate) {
+          const invoiceDate = invoice.created_at.split(' ')[0];
+          if (invoiceDate < fromDate) matches = false;
+        }
+        if (toDate) {
+          const invoiceDate = invoice.created_at.split(' ')[0];
+          if (invoiceDate > toDate) matches = false;
+        }
+        if (paymentMethod && invoice.payment_method !== paymentMethod) {
+          matches = false;
+        }
+        return matches;
+      });
+
+      renderInvoices();
+      calculateStats();
+    }
+
+    function resetFilters() {
+      const today = new Date();
+      const lastMonth = new Date(today);
+      lastMonth.setDate(today.getDate() - 30);
+      
+      document.getElementById('toDate').value = formatDate(today);
+      document.getElementById('fromDate').value = formatDate(lastMonth);
+      document.getElementById('paymentMethod').value = '';
+      
+      filteredInvoices = [...allInvoices];
+      renderInvoices();
+      calculateStats();
+    }
+
+    function calculateStats() {
+      const total = filteredInvoices.length;
+      const totalAmount = filteredInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0);
+      
+      const today = new Date().toISOString().split('T')[0];
+      const todayInvoices = filteredInvoices.filter(inv => inv.created_at.startsWith(today));
+      const todayAmount = todayInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0);
+
+      document.getElementById('totalInvoices').textContent = total.toLocaleString();
+      document.getElementById('totalSales').textContent = totalAmount.toFixed(2) + ' ' + currencySymbol;
+      document.getElementById('todayInvoices').textContent = todayInvoices.length.toLocaleString();
+      document.getElementById('todaySales').textContent = todayAmount.toFixed(2) + ' ' + currencySymbol;
+    }
+
+    async function viewInvoiceDetails(invoiceId) {
+      const modal = document.getElementById('invoiceModal');
+      const body = document.getElementById('invoiceDetailsBody');
+      
+      modal.classList.add('active');
+      body.innerHTML = '<div class="text-center" style="padding: 40px;"><div class="loading-spinner"></div><p class="text-muted">جاري تحميل التفاصيل...</p></div>';
+
+      try {
+        const invoice = allInvoices.find(inv => inv.id == invoiceId);
+        if (!invoice) throw new Error('الفاتورة غير موجودة');
+
+        const itemsRes = await fetch(`${apiBase}?action=get_invoice_items&invoice_id=${invoiceId}`);
+        const itemsJson = await itemsRes.json();
+        
+        if (!itemsJson.success) {
+          throw new Error(itemsJson.message || 'خطأ في جلب منتجات الفاتورة');
+        }
+        
+        const items = itemsJson.data || [];
+
+        let html = `
+          <div class="invoice-detail-row">
+            <strong>رقم الفاتورة:</strong>
+            <span>${escapeHtml(invoice.invoice_number)}</span>
+          </div>
+          <div class="invoice-detail-row">
+            <strong>التاريخ والوقت:</strong>
+            <span>${formatDateTime(invoice.created_at)}</span>
+          </div>
+          <div class="invoice-detail-row">
+            <strong>المبلغ الإجمالي:</strong>
+            <span class="amount">${parseFloat(invoice.total_amount).toFixed(2)} ${currencySymbol}</span>
+          </div>
+          <div class="invoice-detail-row">
+            <strong>المبلغ الفرعي:</strong>
+            <span>${parseFloat(invoice.subtotal).toFixed(2)} ${currencySymbol}</span>
+          </div>
+          <div class="invoice-detail-row">
+            <strong>الضريبة:</strong>
+            <span>${parseFloat(invoice.tax_amount || 0).toFixed(2)} ${currencySymbol}</span>
+          </div>
+          <div class="invoice-detail-row">
+            <strong>طريقة الدفع:</strong>
+            <span class="payment-badge ${getPaymentClass(invoice.payment_method)}">${escapeHtml(invoice.payment_method || 'نقدي')}</span>
+          </div>
+        `;
+
+        if (items && items.length > 0) {
+          html += `
+            <div class="invoice-items-table">
+              <h3><i class="fas fa-shopping-cart"></i> المنتجات</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>المنتج</th>
+                    <th>الكمية</th>
+                    <th>السعر</th>
+                    <th>الإجمالي</th>
+                  </tr>
+                </thead>
+                <tbody>
+          `;
+
+          items.forEach(item => {
+            const unitQty = item.unit_quantity || item.quantity;
+            const unitLabel = getUnitLabel(item.unit || 'strip');
+            html += `
+              <tr>
+                <td>${escapeHtml(item.product_name || 'منتج #' + item.product_id)}</td>
+                <td>${unitQty} ${unitLabel}</td>
+                <td>${parseFloat(item.unit_price).toFixed(2)} ${currencySymbol}</td>
+                <td>${parseFloat(item.total_price).toFixed(2)} ${currencySymbol}</td>
+              </tr>
+            `;
+          });
+
+          html += `</tbody></table></div>`;
+        }
+
+        body.innerHTML = html;
+      } catch (err) {
+        body.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>خطأ: ${err.message}</p></div>`;
+      }
+    }
+
+    function closeInvoiceModal() {
+      document.getElementById('invoiceModal').classList.remove('active');
+    }
+
+    document.getElementById('invoiceModal').addEventListener('click', (e) => {
+      if (e.target.id === 'invoiceModal') {
+        closeInvoiceModal();
+      }
+    });
+
+    function escapeHtml(s) {
+      return String(s||'').replace(/[&<>"']/g, (c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);
+    }
+
+    function formatDate(date) {
+      const d = new Date(date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function formatDateTime(dateTimeStr) {
+      if (!dateTimeStr) return '';
+      const date = new Date(dateTimeStr);
+      return `${date.toLocaleDateString('ar-SA')} ${date.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+
+    function getPaymentClass(method) {
+      if (!method) return 'cash';
+      const m = method.toLowerCase();
+      if (m.includes('نقد') || m === 'cash') return 'cash';
+      if (m.includes('بطاقة') || m.includes('card')) return 'card';
+      return 'other';
+    }
+
+    function getUnitLabel(unit) {
+      if (unit === 'strip') return 'شريط';
+      if (unit === 'box') return 'علبة';
+      return 'كرتونة';
+    }
+
+    function showError(message) {
+      const tbody = document.getElementById('invoicesTableBody');
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>${escapeHtml(message)}</p></div></td></tr>`;
+    }
+  </script>
+</body>
+</html>

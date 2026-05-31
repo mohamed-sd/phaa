@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>إدارة المنتجات - صيدليات الحياة</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-styles.css">
+  <style>
+    /* Page Specific Styles */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .calculated-field {
+      background: var(--gray-100) !important;
+      cursor: not-allowed;
+    }
+
+    .filter-section {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+  </style>
+  <script src="./sidebar.js"></script>
+</head>
+<body>
+  <!-- Sidebar - يتم تحميله تلقائياً من sidebar.js -->
+
+  <main>
+    <div class="topbar">
+      <h1><i class="fas fa-pills"></i> إدارة المنتجات</h1>
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-name" id="userDisplay">مرحباً</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-plus-circle"></i> إضافة / تعديل المنتج</h3>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">الفئة</label>
+            <select id="prodCategory" class="form-control"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">اسم المنتج</label>
+            <input type="text" id="prodName" class="form-control" placeholder="اسم المنتج">
+          </div>
+          <div class="form-group">
+            <label class="form-label">سعر الشريط</label>
+            <input type="number" id="prodPrice" class="form-control" placeholder="سعر الشريط" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">سعر العلبة</label>
+            <input type="number" id="prodPriceBox" class="form-control" placeholder="سعر العلبة" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">سعر الكرتونة</label>
+            <input type="number" id="prodPriceCarton" class="form-control" placeholder="سعر الكرتونة" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">عدد الكراتين</label>
+            <input type="number" id="prodCartons" class="form-control" placeholder="عدد الكراتين" value="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">علب/كرتونة</label>
+            <input type="number" id="prodBoxesPerCarton" class="form-control" placeholder="عدد العلب في الكرتونة" value="12">
+          </div>
+          <div class="form-group">
+            <label class="form-label">شرائط/علبة</label>
+            <input type="number" id="prodStripsPerBox" class="form-control" placeholder="عدد الشرائط في العلبة" value="3">
+          </div>
+          <div class="form-group">
+            <label class="form-label">إجمالي العلب (محسوب)</label>
+            <input type="number" id="calcBoxes" class="form-control calculated-field" readonly value="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">إجمالي الشرائط (محسوب)</label>
+            <input type="number" id="calcStrips" class="form-control calculated-field" readonly value="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">الباركود</label>
+            <input type="text" id="prodBarcode" class="form-control" placeholder="الباركود (اختياري)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">تاريخ الانتهاء</label>
+            <input type="date" id="prodExpiry" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">الحد الأدنى</label>
+            <input type="number" id="prodMinStock" class="form-control" placeholder="الحد الأدنى" value="10">
+          </div>
+          <div class="form-group">
+            <label class="form-label">رابط الصورة</label>
+            <input type="text" id="prodImage" class="form-control" placeholder="رابط الصورة (اختياري)">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label class="form-label">الوصف</label>
+          <textarea id="prodDesc" class="form-control" placeholder="وصف المنتج (اختياري)" rows="2"></textarea>
+        </div>
+        <div class="form-actions">
+          <button id="addProdBtn" class="btn btn-primary"><i class="fas fa-save"></i> إضافة منتج</button>
+        </div>
+        <p class="text-muted" style="margin-top: 12px; font-size: 13px;"><i class="fas fa-info-circle"></i> اضغط على تعديل لتحديث بيانات المنتج</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <h3><i class="fas fa-list"></i> قائمة المنتجات</h3>
+        <div class="filter-section">
+          <label class="text-muted">عرض:</label>
+          <select id="productFilter" class="form-control" style="width: auto;">
+            <option value="all">جميع المنتجات</option>
+            <option value="active">المنتجات النشطة</option>
+            <option value="disabled">المنتجات المعطلة</option>
+          </select>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table" id="prodsTable">
+            <thead>
+              <tr>
+                <th>الحالة</th>
+                <th>الاسم</th>
+                <th>الفئة</th>
+                <th>الأسعار</th>
+                <th>المخزون</th>
+                <th>الباركود</th>
+                <th>الانتهاء</th>
+                <th>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./auth-check.js"></script>
+  <script>
+    // Check authentication - Admin/Manager only
+    async function checkAuthAndRedirect() {
+      try {
+        const res = await fetch('../api.php?action=check_session', { credentials: 'include' });
+        const json = await res.json();
+        
+        if (!json.success) {
+          window.location.href = '../login.php';
+          return false;
+        }
+        
+        const user = json.data;
+        if (user.role !== 'admin' && user.role !== 'manager') {
+          window.location.href = '../index.html';
+          return false;
+        }
+        
+        // Update user display
+        const initials = user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2);
+        document.getElementById('userAvatar').textContent = initials;
+        document.getElementById('userDisplay').textContent = user.full_name;
+        
+        return true;
+      } catch (err) {
+        window.location.href = '../login.php';
+        return false;
+      }
+    }
+
+    // Check auth and init
+    let authOk = false;
+    window.addEventListener('load', async () => {
+      authOk = await checkAuthAndRedirect();
+      if (authOk) loadPageContent();
+    });
+
+    const apiBase = '../api.php';
+    let categoriesMap = {};
+
+    // حساب العلب والشرائط تلقائياً من الكراتين
+    function calculateUnits() {
+      const cartons = parseInt(document.getElementById('prodCartons').value) || 0;
+      const boxesPerCarton = parseInt(document.getElementById('prodBoxesPerCarton').value) || 1;
+      const stripsPerBox = parseInt(document.getElementById('prodStripsPerBox').value) || 1;
+      
+      const totalBoxes = cartons * boxesPerCarton;
+      const totalStrips = totalBoxes * stripsPerBox;
+      
+      document.getElementById('calcBoxes').value = totalBoxes;
+      document.getElementById('calcStrips').value = totalStrips;
+    }
+
+    document.getElementById('prodCartons').addEventListener('input', calculateUnits);
+    document.getElementById('prodBoxesPerCarton').addEventListener('input', calculateUnits);
+    document.getElementById('prodStripsPerBox').addEventListener('input', calculateUnits);
+
+    async function callAPI(action, method='GET', data=null) {
+      const url = `${apiBase}?action=${action}`;
+      const opts = { method, credentials: 'include' };
+      if (method === 'POST' && data) {
+        opts.headers = {'Content-Type':'application/json'};
+        opts.body = JSON.stringify(data);
+      }
+      const res = await fetch(url, opts);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'خطأ');
+      return json.data;
+    }
+
+    async function loadCategories() {
+      const cats = await callAPI('get_categories');
+      categoriesMap = {};
+      cats.forEach(c => categoriesMap[c.id] = c.name);
+      const sel = document.getElementById('prodCategory');
+      sel.innerHTML = '';
+      cats.forEach(c => { 
+        const opt = document.createElement('option'); 
+        opt.value = c.id; 
+        opt.textContent = c.name; 
+        sel.appendChild(opt); 
+      });
+      return cats;
+    }
+
+    function getPackaging(p) {
+      const stripsPerBox = parseInt(p.strips_per_box || 0) || 3;
+      const boxesPerCarton = parseInt(p.boxes_per_carton || 0) || 12;
+      return { stripsPerBox, boxesPerCarton, stripsPerCarton: stripsPerBox * boxesPerCarton };
+    }
+
+    function getStockStrips(p) {
+      if (p.stock_strips !== null && p.stock_strips !== undefined) {
+        const s = Number(p.stock_strips);
+        if (!Number.isNaN(s)) return s;
+      }
+      return Number(p.stock || 0);
+    }
+
+    function getUnitPrices(p) {
+      const priceStrip = Number(p.price_strip ?? p.price ?? 0);
+      const priceBox = Number(p.price_box ?? 0);
+      const priceCarton = Number(p.price_carton ?? 0);
+      const { stripsPerBox, stripsPerCarton } = getPackaging(p);
+      return {
+        priceStrip,
+        priceBox: priceBox || (priceStrip * stripsPerBox),
+        priceCarton: priceCarton || (priceStrip * stripsPerCarton)
+      };
+    }
+
+    async function loadProducts() {
+      const filter = document.getElementById('productFilter').value;
+      const prods = await callAPI('get_products_admin&filter=' + filter);
+      const tbody = document.querySelector('#prodsTable tbody');
+      tbody.innerHTML = '';
+      prods.forEach(p => {
+        const tr = document.createElement('tr');
+        const catName = categoriesMap[p.category_id] || '---';
+        const { stripsPerBox, boxesPerCarton, stripsPerCarton } = getPackaging(p);
+        const stockStrips = getStockStrips(p);
+        const stockBoxes = Math.floor(stockStrips / stripsPerBox);
+        const stockCartons = Math.floor(stockStrips / stripsPerCarton);
+        const prices = getUnitPrices(p);
+        
+        const isActive = p.is_active === null || p.is_active === 1 || p.is_active === true || p.is_active === '1';
+        const statusBadge = isActive 
+          ? '<span class="badge badge-success"><i class="fas fa-check-circle"></i> نشط</span>'
+          : '<span class="badge badge-danger"><i class="fas fa-ban"></i> معطل</span>';
+        
+        if (!isActive) {
+          tr.style.opacity = '0.6';
+          tr.style.background = 'var(--gray-50)';
+        }
+        
+        let expiryDisplay = p.expiry_date ? p.expiry_date : 'غير محدد';
+        let expiryClass = '';
+        if (p.expiry_date) {
+          const expiryDate = new Date(p.expiry_date);
+          const today = new Date();
+          const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+          
+          if (daysUntilExpiry < 0) {
+            expiryClass = 'style="color: var(--danger); font-weight: bold;"';
+            expiryDisplay = p.expiry_date + ' (منتهي)';
+          } else if (daysUntilExpiry <= 30) {
+            expiryClass = 'style="color: var(--warning); font-weight: bold;"';
+            expiryDisplay = p.expiry_date + ' (' + daysUntilExpiry + ' يوم)';
+          }
+        }
+        
+        let stockClass = '';
+        if (stockStrips === 0) {
+          stockClass = 'style="color: var(--danger); font-weight: bold;"';
+        } else if (stockStrips <= (p.min_stock || 10)) {
+          stockClass = 'style="color: var(--warning); font-weight: bold;"';
+        }
+        
+        const toggleBtn = isActive
+          ? `<button class="btn btn-warning btn-sm" data-action="toggle" data-id="${p.id}" data-active="0" title="تعطيل"><i class="fas fa-ban"></i></button>`
+          : `<button class="btn btn-success btn-sm" data-action="toggle" data-id="${p.id}" data-active="1" title="تفعيل"><i class="fas fa-check"></i></button>`;
+        
+        tr.innerHTML = `
+          <td>${statusBadge}</td>
+          <td>${escapeHtml(p.name)}</td>
+          <td>${escapeHtml(catName)}</td>
+          <td>
+            <small>شريط: ${prices.priceStrip.toFixed(2)}</small><br>
+            <small>علبة: ${prices.priceBox.toFixed(2)}</small><br>
+            <small>كرتونة: ${prices.priceCarton.toFixed(2)}</small>
+          </td>
+          <td ${stockClass}>
+            ${stockStrips} شريط<br>
+            <small>${stockBoxes} علبة / ${stockCartons} كرتونة</small>
+          </td>
+          <td>${escapeHtml(p.barcode || '-')}</td>
+          <td ${expiryClass}>${expiryDisplay}</td>
+          <td>
+            <div class="btn-group">
+              <button class="btn btn-primary btn-sm" data-action="edit" data-id="${p.id}"><i class="fas fa-edit"></i></button>
+              ${toggleBtn}
+              <button class="btn btn-danger btn-sm" data-action="delete" data-id="${p.id}"><i class="fas fa-trash"></i></button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    
+    document.getElementById('productFilter').addEventListener('change', loadProducts);
+
+    function escapeHtml(s){return String(s||'').replace(/[&<>"']/g, (c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);}
+
+    document.getElementById('addProdBtn').addEventListener('click', async ()=>{
+      const addBtn = document.getElementById('addProdBtn');
+      try {
+        const totalStrips = parseInt(document.getElementById('calcStrips').value) || 0;
+        
+        const data = {
+          category_id: parseInt(document.getElementById('prodCategory').value),
+          name: document.getElementById('prodName').value.trim(),
+          description: document.getElementById('prodDesc').value.trim(),
+          price: parseFloat(document.getElementById('prodPrice').value),
+          stock: totalStrips,
+          price_strip: parseFloat(document.getElementById('prodPrice').value),
+          price_box: parseFloat(document.getElementById('prodPriceBox').value) || null,
+          price_carton: parseFloat(document.getElementById('prodPriceCarton').value) || null,
+          stock_strips: totalStrips,
+          strips_per_box: parseInt(document.getElementById('prodStripsPerBox').value) || 3,
+          boxes_per_carton: parseInt(document.getElementById('prodBoxesPerCarton').value) || 12,
+          image_url: document.getElementById('prodImage').value.trim(),
+          barcode: document.getElementById('prodBarcode').value.trim(),
+          expiry_date: document.getElementById('prodExpiry').value || null,
+          min_stock: parseInt(document.getElementById('prodMinStock').value) || 10
+        };
+        if (!data.name || !data.price || !data.category_id) { alert('الرجاء تعبئة اسم الفئة والسعر'); return; }
+        
+        if (addBtn.dataset.editId) {
+          data.id = parseInt(addBtn.dataset.editId);
+          await callAPI('update_product','POST',data);
+          alert('تم الحفظ');
+          delete addBtn.dataset.editId;
+          addBtn.innerHTML = '<i class="fas fa-save"></i> إضافة منتج';
+        } else {
+          await callAPI('add_product','POST',data);
+          alert('تمت إضافة المنتج');
+        }
+        
+        // Clear form
+        document.getElementById('prodName').value='';
+        document.getElementById('prodPrice').value='';
+        document.getElementById('prodCartons').value='0';
+        document.getElementById('prodPriceBox').value='';
+        document.getElementById('prodPriceCarton').value='';
+        document.getElementById('prodStripsPerBox').value='3';
+        document.getElementById('prodBoxesPerCarton').value='12';
+        document.getElementById('prodBarcode').value='';
+        document.getElementById('prodImage').value='';
+        document.getElementById('prodDesc').value='';
+        document.getElementById('prodExpiry').value='';
+        document.getElementById('prodMinStock').value='10';
+        calculateUnits();
+        
+        await refreshAll();
+      } catch (err) { alert('خطأ: '+err.message); }
+    });
+
+    document.querySelector('#prodsTable').addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button'); if (!btn) return;
+      const action = btn.getAttribute('data-action'); 
+      const id = parseInt(btn.getAttribute('data-id'));
+      
+      if (action === 'toggle') {
+        const newStatus = btn.getAttribute('data-active') === '1';
+        const confirmMsg = newStatus ? 'تفعيل هذا المنتج؟' : 'تعطيل هذا المنتج؟';
+        if (!confirm(confirmMsg)) return;
+        try {
+          await callAPI('toggle_product_status', 'POST', { id, is_active: newStatus });
+          alert(newStatus ? 'تم تفعيل المنتج' : 'تم تعطيل المنتج');
+          await loadProducts();
+        } catch (err) { alert('خطأ: ' + err.message); }
+        return;
+      }
+      
+      if (action === 'delete') {
+        if (!confirm('حذف المنتج؟')) return;
+        try { 
+          await callAPI('delete_product','POST',{id}); 
+          alert('تم الحذف'); 
+          await refreshAll(); 
+        } catch (err){alert('خطأ: '+err.message);}
+      }
+      
+      if (action === 'edit') {
+        try {
+          const prod = await callAPI('get_product&id=' + id);
+          document.getElementById('prodCategory').value = prod.category_id;
+          document.getElementById('prodName').value = prod.name;
+          document.getElementById('prodPrice').value = prod.price_strip ?? prod.price;
+          document.getElementById('prodPriceBox').value = prod.price_box ?? '';
+          document.getElementById('prodPriceCarton').value = prod.price_carton ?? '';
+          document.getElementById('prodStripsPerBox').value = prod.strips_per_box ?? 3;
+          document.getElementById('prodBoxesPerCarton').value = prod.boxes_per_carton ?? 12;
+          
+          const totalStrips = prod.stock_strips ?? prod.stock ?? 0;
+          const stripsPerBox = prod.strips_per_box ?? 3;
+          const boxesPerCarton = prod.boxes_per_carton ?? 12;
+          const stripsPerCarton = stripsPerBox * boxesPerCarton;
+          const cartons = stripsPerCarton > 0 ? Math.floor(totalStrips / stripsPerCarton) : 0;
+          document.getElementById('prodCartons').value = cartons;
+          
+          document.getElementById('prodBarcode').value = prod.barcode || '';
+          document.getElementById('prodImage').value = prod.image_url || '';
+          document.getElementById('prodDesc').value = prod.description || '';
+          document.getElementById('prodExpiry').value = prod.expiry_date || '';
+          document.getElementById('prodMinStock').value = prod.min_stock || 10;
+          calculateUnits();
+          
+          const addBtn = document.getElementById('addProdBtn');
+          addBtn.innerHTML = '<i class="fas fa-save"></i> حفظ التعديلات';
+          addBtn.dataset.editId = id;
+          document.querySelector('.form-grid').scrollIntoView({ behavior: 'smooth' });
+        } catch (err) { alert('خطأ: '+err.message); }
+      }
+    });
+
+    async function refreshAll(){ 
+      await loadCategories(); 
+      await loadProducts(); 
+    }
+
+    async function loadPageContent() {
+      await refreshAll();
+    }
+  </script>
+</body>
+</html>

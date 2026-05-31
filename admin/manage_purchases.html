@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>فواتير الشراء - صيدليات الحياة</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-styles.css">
+  <style>
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 1200px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .stat-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .stat-icon.primary { background: rgba(8, 145, 178, 0.1); color: var(--primary); }
+    .stat-icon.success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .stat-icon.warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+    .stat-icon.danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+    .stat-info h3 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stat-info p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Purchase Form Card */
+    .purchase-form-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .purchase-form-header {
+      background: linear-gradient(135deg, var(--primary) 0%, #0e7490 100%);
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .purchase-form-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+    }
+
+    .purchase-form-body {
+      padding: 24px;
+    }
+
+    /* Form Layout */
+    .form-section {
+      margin-bottom: 24px;
+    }
+
+    .form-section-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-section-title i {
+      color: var(--primary);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 1200px) {
+      .form-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(8, 145, 178, 0.1);
+    }
+
+    /* Products Table */
+    .products-table-container {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 8px;
+    }
+
+    .products-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .products-table th {
+      background: linear-gradient(135deg, var(--primary) 0%, #0e7490 100%);
+      color: white;
+      padding: 14px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .products-table th:first-child {
+      border-radius: 0 8px 8px 0;
+    }
+
+    .products-table th:last-child {
+      border-radius: 8px 0 0 8px;
+    }
+
+    .products-table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      background: white;
+      transition: all 0.2s;
+    }
+
+    .products-table tr:hover td {
+      background: #f0fdfa;
+    }
+
+    .products-table input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 13px;
+      transition: all 0.3s;
+    }
+
+    .products-table input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(8, 145, 178, 0.1);
+    }
+
+    .remove-item-btn {
+      background: #fee2e2;
+      color: #dc2626;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .remove-item-btn:hover {
+      background: #dc2626;
+      color: white;
+      transform: scale(1.1);
+    }
+
+    .add-product-btn {
+      margin-top: 12px;
+      background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
+      color: var(--primary);
+      border: 2px dashed var(--primary);
+      padding: 12px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .add-product-btn:hover {
+      background: linear-gradient(135deg, var(--primary) 0%, #0e7490 100%);
+      color: white;
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+    }
+
+    /* Product Search */
+    .product-search {
+      position: relative;
+    }
+
+    .product-suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 2px solid var(--primary);
+      border-radius: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 8px 24px rgba(8, 145, 178, 0.2);
+    }
+
+    .product-suggestions.show {
+      display: block;
+    }
+
+    .product-suggestion {
+      padding: 12px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .product-suggestion:hover {
+      background: #f0fdfa;
+      color: var(--primary);
+      padding-right: 18px;
+    }
+
+    .product-suggestion strong {
+      display: block;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .product-suggestion small {
+      display: block;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    /* Totals Section */
+    .totals-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+      padding: 20px;
+      background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%);
+      border-radius: 12px;
+    }
+
+    @media (max-width: 1200px) {
+      .totals-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      .totals-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .total-box {
+      text-align: center;
+      padding: 16px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .total-box .label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .total-box .value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .total-box.grand {
+      background: linear-gradient(135deg, var(--primary) 0%, #0e7490 100%);
+    }
+
+    .total-box.grand .label,
+    .total-box.grand .value {
+      color: white;
+    }
+
+    .total-box.grand .value {
+      font-size: 24px;
+    }
+
+    .total-box input {
+      width: 100px;
+      padding: 8px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* Form Footer */
+    .form-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 2px solid #e2e8f0;
+    }
+
+    .payment-options {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .payment-options select {
+      padding: 10px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .save-btn {
+      background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.3s;
+    }
+
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Purchases List Card */
+    .purchases-list-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .purchases-list-header {
+      padding: 20px 24px;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .purchases-list-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .filters-row {
+      display: flex;
+      gap: 12px;
+      padding: 16px 24px;
+      background: #f8fafc;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filters-row input,
+    .filters-row select {
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+
+    .filters-row input:focus,
+    .filters-row select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(8, 145, 178, 0.1);
+    }
+
+    .filters-row .btn {
+      padding: 10px 14px;
+    }
+
+    /* Table Styles */
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .table th {
+      background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%);
+      padding: 14px 12px;
+      text-align: right;
+      font-weight: 600;
+      color: var(--primary);
+      border-bottom: 2px solid #0891b2;
+      white-space: nowrap;
+    }
+
+    .table td {
+      padding: 14px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+
+    .table tr {
+      transition: all 0.2s;
+    }
+
+    .table tr:hover {
+      background: #f8fafc;
+    }
+
+    .table .actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* Payment badges */
+    .payment-paid { background: #d1fae5; color: #065f46; }
+    .payment-partial { background: #fef3c7; color: #92400e; }
+    .payment-unpaid { background: #fee2e2; color: #991b1b; }
+
+    /* Toggle Form */
+    .toggle-form-btn {
+      background: white;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .toggle-form-btn:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    .form-collapsed .purchase-form-body {
+      display: none;
+    }
+
+    .form-collapsed .purchase-form-header {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <script src="./sidebar.js"></script>
+
+  <main>
+    <div class="topbar">
+      <div class="topbar-title">
+        <i class="fas fa-shopping-cart"></i>
+        <span>فواتير الشراء</span>
+      </div>
+      <div class="user-section">
+        <div id="userAvatar"></div>
+        <span id="userDisplay">مرحباً</span>
+      </div>
+    </div>
+
+    <!-- الإحصائيات -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon primary"><i class="fas fa-file-invoice"></i></div>
+        <div class="stat-info">
+          <h3 id="totalPurchases">0</h3>
+          <p>إجمالي الفواتير</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon warning"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="stat-info">
+          <h3 id="totalAmount">0 ر.س</h3>
+          <p>إجمالي المشتريات</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+          <h3 id="paidAmountStat">0 ر.س</h3>
+          <p>المدفوع</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon danger"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+          <h3 id="remainingAmount">0 ر.س</h3>
+          <p>المستحق</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- فورم إضافة فاتورة شراء جديدة -->
+    <div class="purchase-form-card" id="purchaseFormCard">
+      <div class="purchase-form-header" onclick="toggleForm()">
+        <h2><i class="fas fa-plus-circle"></i> إضافة فاتورة شراء جديدة</h2>
+        <button class="toggle-form-btn" id="toggleBtn">
+          <i class="fas fa-chevron-up" id="toggleIcon"></i>
+        </button>
+      </div>
+      <div class="purchase-form-body" id="purchaseFormBody">
+        <form id="purchaseForm">
+          <input type="hidden" id="purchaseId">
+          
+          <!-- معلومات الفاتورة الأساسية -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <i class="fas fa-info-circle"></i> معلومات الفاتورة
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label><i class="fas fa-truck"></i> المورد *</label>
+                <select id="purchaseSupplier" required>
+                  <option value="">اختر المورد</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label><i class="fas fa-calendar"></i> التاريخ *</label>
+                <input type="date" id="purchaseDate" required>
+              </div>
+              <div class="form-group">
+                <label><i class="fas fa-hashtag"></i> رقم الفاتورة المرجعي</label>
+                <input type="text" id="referenceNumber" placeholder="اختياري">
+              </div>
+              <div class="form-group">
+                <label><i class="fas fa-sticky-note"></i> ملاحظات</label>
+                <input type="text" id="purchaseNotes" placeholder="ملاحظات إضافية">
+              </div>
+            </div>
+          </div>
+
+          <!-- قسم المنتجات -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <i class="fas fa-boxes"></i> المنتجات
+            </div>
+            <div class="products-table-container">
+              <table class="products-table">
+                <thead>
+                  <tr>
+                    <th style="width: 25%;">المنتج</th>
+                    <th style="width: 10%;">الكمية</th>
+                    <th style="width: 15%;">سعر الشراء</th>
+                    <th style="width: 15%;">سعر البيع</th>
+                    <th style="width: 15%;">تاريخ الانتهاء</th>
+                    <th style="width: 12%;">الإجمالي</th>
+                    <th style="width: 8%;"></th>
+                  </tr>
+                </thead>
+                <tbody id="purchaseItems">
+                  <!-- سيتم إضافة الأصناف هنا -->
+                </tbody>
+              </table>
+              <button type="button" class="add-product-btn" onclick="addPurchaseItem()">
+                <i class="fas fa-plus"></i> إضافة منتج جديد
+              </button>
+            </div>
+          </div>
+
+          <!-- ملخص الفاتورة -->
+          <div class="totals-grid">
+            <div class="total-box">
+              <div class="label">المجموع الفرعي</div>
+              <div class="value" id="subtotal">0 ر.س</div>
+            </div>
+            <div class="total-box">
+              <div class="label">الخصم</div>
+              <input type="number" id="discount" value="0" min="0" onchange="calculateTotals()">
+            </div>
+            <div class="total-box grand">
+              <div class="label">الإجمالي النهائي</div>
+              <div class="value" id="grandTotal">0 ر.س</div>
+            </div>
+            <div class="total-box">
+              <div class="label">المبلغ المدفوع</div>
+              <input type="number" id="paidAmount" value="0" min="0" step="0.01" onchange="calculateTotals()">
+            </div>
+            <div class="total-box">
+              <div class="label">المتبقي</div>
+              <div class="value" id="remainingValue" style="color: var(--danger);">0 ر.س</div>
+            </div>
+          </div>
+
+          <!-- تذييل الفورم -->
+          <div class="form-footer">
+            <div class="payment-options">
+              <label style="font-weight: 500; color: var(--text-secondary);">طريقة الدفع:</label>
+              <select id="paymentMethod">
+                <option value="cash">💵 نقداً</option>
+                <option value="transfer">🏦 تحويل بنكي</option>
+                <option value="credit">📋 آجل</option>
+              </select>
+            </div>
+            <div style="display: flex; gap: 12px;">
+              <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                <i class="fas fa-redo"></i> إعادة تعيين
+              </button>
+              <button type="button" class="save-btn" onclick="savePurchase()">
+                <i class="fas fa-save"></i> حفظ الفاتورة
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- قائمة فواتير الشراء -->
+    <div class="purchases-list-card">
+      <div class="purchases-list-header">
+        <h2><i class="fas fa-list-alt"></i> سجل فواتير الشراء</h2>
+        <span class="badge badge-primary" id="purchasesCount">0 فاتورة</span>
+      </div>
+      
+      <div class="filters-row">
+        <input type="text" id="searchPurchase" placeholder="🔍 بحث سريع في الفواتير..." style="flex: 1; min-width: 250px;" onkeyup="searchPurchases()">
+        <select id="filterSupplier" onchange="filterPurchases()">
+          <option value="">جميع الموردين</option>
+        </select>
+        <select id="filterPayment" onchange="filterPurchases()">
+          <option value="">حالة الدفع</option>
+          <option value="paid">✅ مدفوع</option>
+          <option value="partial">⏳ مدفوع جزئياً</option>
+          <option value="unpaid">❌ غير مدفوع</option>
+        </select>
+        <input type="date" id="filterFromDate" onchange="filterPurchases()" title="من تاريخ">
+        <input type="date" id="filterToDate" onchange="filterPurchases()" title="إلى تاريخ">
+        <button class="btn btn-secondary" onclick="resetPurchaseFilters()">
+          <i class="fas fa-times"></i> إعادة تعيين
+        </button>
+      </div>
+
+      <div class="table-responsive" style="padding: 0 24px 24px;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>رقم الفاتورة</th>
+              <th>المورد</th>
+              <th>التاريخ</th>
+              <th>المجموع</th>
+              <th>المدفوع</th>
+              <th>المتبقي</th>
+              <th>حالة الدفع</th>
+              <th>الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="purchasesList">
+            <!-- يتم تحميل البيانات هنا -->
+          </tbody>
+        </table>
+      </div>
+
+      <div id="emptyState" class="empty-state" style="display:none;">
+        <i class="fas fa-shopping-cart"></i>
+        <p>لا توجد فواتير شراء</p>
+        <small>ابدأ بإضافة فاتورة شراء جديدة من النموذج أعلاه</small>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <script src="auth-check.js"></script>
+  <script>
+    let purchases = [];
+    let suppliers = [];
+    let products = [];
+    let purchaseItemsCount = 0;
+    let isFormCollapsed = false;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+      if (user.username) {
+        document.getElementById('userDisplay').textContent = user.full_name || user.username;
+        document.getElementById('userAvatar').textContent = (user.full_name || user.username).charAt(0).toUpperCase();
+      }
+
+      // تعيين تاريخ اليوم
+      document.getElementById('purchaseDate').value = new Date().toISOString().split('T')[0];
+      
+      loadSuppliers();
+      loadProducts();
+      loadPurchases();
+      
+      // إضافة صف منتج افتراضي
+      addPurchaseItem();
+    });
+
+    function toggleForm() {
+      isFormCollapsed = !isFormCollapsed;
+      const card = document.getElementById('purchaseFormCard');
+      const icon = document.getElementById('toggleIcon');
+      
+      if (isFormCollapsed) {
+        card.classList.add('form-collapsed');
+        icon.className = 'fas fa-chevron-down';
+      } else {
+        card.classList.remove('form-collapsed');
+        icon.className = 'fas fa-chevron-up';
+      }
+    }
+
+    async function loadSuppliers() {
+      try {
+        const response = await fetch('../api.php?action=get_suppliers');
+        const data = await response.json();
+        
+        // API يرجع البيانات في حقل data
+        if (data.success && data.data) {
+          suppliers = data.data;
+        } else {
+          suppliers = [];
+        }
+      } catch (e) {
+        console.error('خطأ في تحميل الموردين:', e);
+        suppliers = [];
+      }
+      
+      const select = document.getElementById('purchaseSupplier');
+      const filter = document.getElementById('filterSupplier');
+      
+      if (suppliers.length === 0) {
+        select.innerHTML += `<option value="">لا يوجد موردين</option>`;
+        filter.innerHTML += `<option value="">لا يوجد موردين</option>`;
+      } else {
+        suppliers.forEach(s => {
+          select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+          filter.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+      }
+    }
+
+    async function loadProducts() {
+      try {
+        const response = await fetch('../api.php?action=get_products');
+        const data = await response.json();
+        
+        // API يرجع البيانات في حقل data
+        if (data.success && data.data) {
+          products = data.data;
+        } else {
+          products = [];
+        }
+      } catch (e) {
+        console.error('خطأ في تحميل المنتجات:', e);
+        products = [];
+      }
+    }
+
+    async function loadPurchases() {
+      try {
+        const response = await fetch('../api.php?action=get_purchases');
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          // تحويل البيانات من API للتوافق مع عرض الجدول
+          purchases = data.data.map(p => ({
+            id: p.id,
+            supplier_id: p.supplier_id,
+            supplier_name: p.supplier_name || 'غير محدد',
+            date: p.purchase_date,
+            total: p.total_amount,
+            paid: p.paid_amount,
+            remaining: p.remaining_amount,
+            payment_status: p.payment_status
+          }));
+        } else {
+          purchases = [];
+        }
+        
+        renderPurchases();
+        updateStats();
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('حدث خطأ في تحميل البيانات', 'error');
+      }
+    }
+
+    function updateStats() {
+      const totalAmount = purchases.reduce((sum, p) => sum + parseFloat(p.total || 0), 0);
+      const paidAmount = purchases.reduce((sum, p) => sum + parseFloat(p.paid || 0), 0);
+      const remaining = totalAmount - paidAmount;
+
+      document.getElementById('totalPurchases').textContent = purchases.length;
+      document.getElementById('totalAmount').textContent = totalAmount.toLocaleString() + ' ر.س';
+      document.getElementById('paidAmountStat').textContent = paidAmount.toLocaleString() + ' ر.س';
+      document.getElementById('remainingAmount').textContent = remaining.toLocaleString() + ' ر.س';
+      document.getElementById('purchasesCount').textContent = purchases.length + ' فاتورة';
+    }
+
+    function renderPurchases() {
+      const tbody = document.getElementById('purchasesList');
+      const emptyState = document.getElementById('emptyState');
+      
+      if (purchases.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+      }
+      
+      emptyState.style.display = 'none';
+      
+      const paymentLabels = {
+        'paid': { text: 'مدفوع', class: 'payment-paid', icon: '✅' },
+        'partial': { text: 'مدفوع جزئياً', class: 'payment-partial', icon: '⏳' },
+        'unpaid': { text: 'غير مدفوع', class: 'payment-unpaid', icon: '❌' }
+      };
+      
+      tbody.innerHTML = purchases.map(purchase => {
+        const payment = paymentLabels[purchase.payment_status] || paymentLabels['unpaid'];
+        return `
+          <tr>
+            <td><strong style="color: var(--primary);">#${purchase.id}</strong></td>
+            <td>${purchase.supplier_name}</td>
+            <td>${purchase.date}</td>
+            <td><strong>${parseFloat(purchase.total).toLocaleString()} ر.س</strong></td>
+            <td style="color: var(--success); font-weight: 600;">${parseFloat(purchase.paid).toLocaleString()} ر.س</td>
+            <td style="color: var(--danger); font-weight: 600;">${parseFloat(purchase.remaining).toLocaleString()} ر.س</td>
+            <td><span class="badge ${payment.class}">${payment.icon} ${payment.text}</span></td>
+            <td>
+              <div class="actions">
+                <button class="btn btn-sm btn-success" onclick="addPayment(${purchase.id})" title="إضافة دفعة" ${purchase.payment_status === 'paid' ? 'disabled style="opacity:0.5"' : ''}>
+                  <i class="fas fa-money-bill"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deletePurchase(${purchase.id})" title="حذف">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterPurchases() {
+      const supplierId = document.getElementById('filterSupplier').value;
+      const paymentStatus = document.getElementById('filterPayment').value;
+      const fromDate = document.getElementById('filterFromDate').value;
+      const toDate = document.getElementById('filterToDate').value;
+      const searchTerm = document.getElementById('searchPurchase')?.value.toLowerCase().trim() || '';
+
+      let filtered = [...purchases];
+
+      if (searchTerm) {
+        filtered = filtered.filter(p => 
+          (p.id && p.id.toString().includes(searchTerm)) ||
+          (p.supplier_name && p.supplier_name.toLowerCase().includes(searchTerm)) ||
+          (p.date && p.date.includes(searchTerm))
+        );
+      }
+
+      if (supplierId) {
+        filtered = filtered.filter(p => p.supplier_id == supplierId);
+      }
+      if (paymentStatus) {
+        filtered = filtered.filter(p => p.payment_status === paymentStatus);
+      }
+      if (fromDate) {
+        filtered = filtered.filter(p => p.date >= fromDate);
+      }
+      if (toDate) {
+        filtered = filtered.filter(p => p.date <= toDate);
+      }
+
+      renderFilteredPurchases(filtered);
+    }
+
+    function searchPurchases() {
+      filterPurchases();
+    }
+
+    function resetPurchaseFilters() {
+      document.getElementById('searchPurchase').value = '';
+      document.getElementById('filterSupplier').value = '';
+      document.getElementById('filterPayment').value = '';
+      document.getElementById('filterFromDate').value = '';
+      document.getElementById('filterToDate').value = '';
+      renderPurchases();
+    }
+
+    function renderFilteredPurchases(filtered) {
+      const tbody = document.getElementById('purchasesList');
+      
+      const paymentLabels = {
+        'paid': { text: 'مدفوع', class: 'payment-paid', icon: '✅' },
+        'partial': { text: 'مدفوع جزئياً', class: 'payment-partial', icon: '⏳' },
+        'unpaid': { text: 'غير مدفوع', class: 'payment-unpaid', icon: '❌' }
+      };
+      
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);"><i class="fas fa-search" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>لا توجد نتائج مطابقة</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(purchase => {
+        const payment = paymentLabels[purchase.payment_status] || paymentLabels['unpaid'];
+        return `
+          <tr>
+            <td><strong style="color: var(--primary);">#${purchase.id}</strong></td>
+            <td>${purchase.supplier_name}</td>
+            <td>${purchase.date}</td>
+            <td><strong>${parseFloat(purchase.total).toLocaleString()} ر.س</strong></td>
+            <td style="color: var(--success); font-weight: 600;">${parseFloat(purchase.paid).toLocaleString()} ر.س</td>
+            <td style="color: var(--danger); font-weight: 600;">${parseFloat(purchase.remaining).toLocaleString()} ر.س</td>
+            <td><span class="badge ${payment.class}">${payment.icon} ${payment.text}</span></td>
+            <td>
+              <div class="actions">
+                <button class="btn btn-sm btn-success" onclick="addPayment(${purchase.id})" title="دفعة">
+                  <i class="fas fa-money-bill"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deletePurchase(${purchase.id})" title="حذف">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function addPurchaseItem() {
+      purchaseItemsCount++;
+      const tbody = document.getElementById('purchaseItems');
+      const row = document.createElement('tr');
+      row.id = `item-${purchaseItemsCount}`;
+      
+      row.innerHTML = `
+        <td>
+          <div class="product-search" style="position: relative;">
+            <input type="text" placeholder="🔍 ابحث عن منتج..." onkeyup="searchProduct(this, ${purchaseItemsCount})" onfocus="showAllProducts(${purchaseItemsCount})" onclick="showAllProducts(${purchaseItemsCount})" style="width: 100%;">
+            <div id="suggestions-${purchaseItemsCount}" class="product-suggestions"></div>
+            <input type="hidden" id="product-id-${purchaseItemsCount}">
+          </div>
+        </td>
+        <td><input type="number" id="qty-${purchaseItemsCount}" value="1" min="1" onchange="calculateTotals()" style="text-align: center;"></td>
+        <td><input type="number" id="purchase-price-${purchaseItemsCount}" value="0" min="0" step="0.01" onchange="calculateTotals()"></td>
+        <td><input type="number" id="selling-price-${purchaseItemsCount}" value="0" min="0" step="0.01"></td>
+        <td><input type="date" id="expiry-${purchaseItemsCount}"></td>
+        <td id="item-total-${purchaseItemsCount}" style="font-weight: 600; color: var(--primary); text-align: center;">0 ر.س</td>
+        <td style="text-align: center;"><button type="button" class="remove-item-btn" onclick="removeItem(${purchaseItemsCount})"><i class="fas fa-trash"></i></button></td>
+      `;
+      
+      tbody.appendChild(row);
+    }
+
+    function searchProduct(input, itemId) {
+      const query = input.value.toLowerCase().trim();
+      const suggestionsDiv = document.getElementById(`suggestions-${itemId}`);
+      
+      if (query.length < 1) {
+        suggestionsDiv.classList.remove('show');
+        return;
+      }
+      
+      // البحث حسب الاسم أو الباركود أو الوصف
+      const filtered = products.filter(p => {
+        const name = (p.name || '').toLowerCase();
+        const barcode = (p.barcode || '').toLowerCase();
+        const description = (p.description || '').toLowerCase();
+        return name.includes(query) || barcode.includes(query) || description.includes(query);
+      });
+      
+      if (filtered.length > 0) {
+        suggestionsDiv.innerHTML = filtered.map(p => {
+          const price = parseFloat(p.price || 0);
+          const stock = parseInt(p.stock || 0) || parseInt(p.stock_strips || 0) || 0;
+          
+          return `
+            <div class="product-suggestion" onclick="selectProduct(${itemId}, ${p.id}, '${p.name.replace(/'/g, "\\'")}', ${price}, ${price})">
+              <strong>${p.name}</strong>
+              <small>
+                <i class="fas fa-dollar-sign" style="width: 12px;"></i> السعر: ${price.toFixed(2)} ر.س | 
+                <i class="fas fa-barcode" style="width: 12px;"></i> ${p.barcode ? p.barcode : 'بدون'}
+                ${stock > 0 ? `<span style="color: var(--success); margin-right: 8px;"> | المخزون: ${stock}</span>` : '<span style="color: var(--danger); margin-right: 8px;"> | المخزون: 0</span>'}
+              </small>
+            </div>
+          `;
+        }).join('');
+        suggestionsDiv.classList.add('show');
+      } else {
+        suggestionsDiv.innerHTML = `
+          <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+            <i class="fas fa-search" style="font-size: 24px; opacity: 0.5; display: block; margin-bottom: 8px;"></i>
+            <p>لم يتم العثور على منتج بـ "${query}"</p>
+            <small>اضغط على الحقل لعرض جميع المنتجات</small>
+          </div>
+        `;
+        suggestionsDiv.classList.add('show');
+      }
+    }
+
+    function showAllProducts(itemId) {
+      const suggestionsDiv = document.getElementById(`suggestions-${itemId}`);
+      
+      if (products.length === 0) {
+        suggestionsDiv.innerHTML = `
+          <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+            <i class="fas fa-inbox" style="font-size: 24px; opacity: 0.5; display: block; margin-bottom: 8px;"></i>
+            <p>لا توجد منتجات متاحة</p>
+          </div>
+        `;
+        suggestionsDiv.classList.add('show');
+        return;
+      }
+      
+      // عرض أول 20 منتج
+      const displayProducts = products.slice(0, 20);
+      suggestionsDiv.innerHTML = displayProducts.map(p => {
+        const price = parseFloat(p.price || 0);
+        const stock = parseInt(p.stock || 0) || parseInt(p.stock_strips || 0) || 0;
+        
+        return `
+          <div class="product-suggestion" onclick="selectProduct(${itemId}, ${p.id}, '${p.name.replace(/'/g, "\\'")}', ${price}, ${price})">
+            <strong>${p.name}</strong>
+            <small>
+              <i class="fas fa-dollar-sign" style="width: 12px;"></i> السعر: ${price.toFixed(2)} ر.س | 
+              <i class="fas fa-barcode" style="width: 12px;"></i> ${p.barcode ? p.barcode : 'بدون'}
+              ${stock > 0 ? `<span style="color: var(--success); margin-right: 8px;"> | المخزون: ${stock}</span>` : '<span style="color: var(--danger); margin-right: 8px;"> | المخزون: 0</span>'}
+            </small>
+          </div>
+        `;
+      }).join('');
+      
+      // إضافة رسالة إذا كان هناك منتجات أكثر
+      if (products.length > 20) {
+        suggestionsDiv.innerHTML += `
+          <div style="padding: 12px 14px; text-align: center; color: var(--text-muted); font-size: 12px; border-top: 1px solid #f1f5f9;">
+            وغيرها... (اكتب في البحث لتصفية المنتجات)
+          </div>
+        `;
+      }
+      
+      suggestionsDiv.classList.add('show');
+    }
+
+    function selectProduct(itemId, productId, name, purchasePrice, sellingPrice) {
+      const row = document.getElementById(`item-${itemId}`);
+      row.querySelector('input[type="text"]').value = name;
+      document.getElementById(`product-id-${itemId}`).value = productId;
+      document.getElementById(`purchase-price-${itemId}`).value = purchasePrice;
+      document.getElementById(`selling-price-${itemId}`).value = sellingPrice;
+      document.getElementById(`suggestions-${itemId}`).classList.remove('show');
+      calculateTotals();
+    }
+
+    function removeItem(itemId) {
+      const row = document.getElementById(`item-${itemId}`);
+      if (row) {
+        row.remove();
+        calculateTotals();
+      }
+    }
+
+    function calculateTotals() {
+      let subtotal = 0;
+      
+      document.querySelectorAll('#purchaseItems tr').forEach(row => {
+        const itemId = row.id.split('-')[1];
+        const qty = parseFloat(document.getElementById(`qty-${itemId}`)?.value) || 0;
+        const price = parseFloat(document.getElementById(`purchase-price-${itemId}`)?.value) || 0;
+        const itemTotal = qty * price;
+        
+        const totalCell = document.getElementById(`item-total-${itemId}`);
+        if (totalCell) {
+          totalCell.textContent = itemTotal.toLocaleString() + ' ر.س';
+        }
+        
+        subtotal += itemTotal;
+      });
+      
+      const discount = parseFloat(document.getElementById('discount').value) || 0;
+      const grandTotal = subtotal - discount;
+      const paid = parseFloat(document.getElementById('paidAmount').value) || 0;
+      const remaining = grandTotal - paid;
+      
+      document.getElementById('subtotal').textContent = subtotal.toLocaleString() + ' ر.س';
+      document.getElementById('grandTotal').textContent = grandTotal.toLocaleString() + ' ر.س';
+      document.getElementById('remainingValue').textContent = remaining.toLocaleString() + ' ر.س';
+    }
+
+    function resetForm() {
+      document.getElementById('purchaseForm').reset();
+      document.getElementById('purchaseDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('purchaseItems').innerHTML = '';
+      purchaseItemsCount = 0;
+      addPurchaseItem();
+      calculateTotals();
+    }
+
+    async function savePurchase() {
+      const supplierId = document.getElementById('purchaseSupplier').value;
+      const date = document.getElementById('purchaseDate').value;
+      
+      if (!supplierId || !date) {
+        showToast('يرجى اختيار المورد وتاريخ الفاتورة', 'error');
+        return;
+      }
+      
+      // جمع المنتجات
+      const items = [];
+      document.querySelectorAll('#purchaseItems tr').forEach(row => {
+        const itemId = row.id.split('-')[1];
+        const productId = document.getElementById(`product-id-${itemId}`)?.value;
+        const qty = parseInt(document.getElementById(`qty-${itemId}`)?.value) || 0;
+        const purchasePrice = parseFloat(document.getElementById(`purchase-price-${itemId}`)?.value) || 0;
+        const sellingPrice = parseFloat(document.getElementById(`selling-price-${itemId}`)?.value) || 0;
+        const expiry = document.getElementById(`expiry-${itemId}`)?.value;
+        
+        if (productId && qty > 0 && purchasePrice > 0) {
+          const totalPrice = qty * purchasePrice;
+          items.push({
+            product_id: parseInt(productId),
+            quantity: qty,
+            unit: 'box',
+            unit_quantity: qty,
+            base_quantity: qty,
+            purchase_price: purchasePrice,
+            selling_price: sellingPrice > 0 ? sellingPrice : null,
+            total_price: totalPrice,
+            expiry_date: expiry || null,
+            batch_number: ''
+          });
+        }
+      });
+      
+      if (items.length === 0) {
+        showToast('يرجى إضافة منتج واحد على الأقل مع السعر', 'error');
+        return;
+      }
+      
+      const subtotal = items.reduce((sum, item) => sum + item.total_price, 0);
+      const discount = parseFloat(document.getElementById('discount').value) || 0;
+      const paid = parseFloat(document.getElementById('paidAmount').value) || 0;
+      const total = subtotal - discount;
+      
+      const data = {
+        supplier_id: parseInt(supplierId),
+        purchase_date: date,
+        items: items,
+        discount_amount: discount,
+        tax_amount: 0,
+        paid_amount: paid,
+        payment_method: document.getElementById('paymentMethod').value || 'cash',
+        notes: document.getElementById('purchaseNotes').value || ''
+      };
+
+      try {
+        console.log('بيانات الفاتورة المرسلة:', JSON.stringify(data, null, 2));
+        const response = await fetch('../api.php?action=create_purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        console.log('الرد من السيرفر:', result);
+        
+        if (result.success) {
+          showToast('تم حفظ الفاتورة بنجاح ✅', 'success');
+          resetForm();
+          loadPurchases();
+        } else {
+          showToast(result.message || 'حدث خطأ في الحفظ', 'error');
+        }
+      } catch (error) {
+        console.error('خطأ في الاتصال:', error);
+        showToast('خطأ في الاتصال بالخادم: ' + error.message, 'error');
+      }
+    }
+
+    function addPayment(id) {
+      const purchase = purchases.find(p => p.id === id);
+      if (!purchase || purchase.payment_status === 'paid') return;
+      
+      const amount = prompt(`💰 أدخل المبلغ المدفوع\n\nالمتبقي: ${purchase.remaining.toLocaleString()} ر.س`);
+      if (amount && parseFloat(amount) > 0) {
+        const paymentAmount = Math.min(parseFloat(amount), purchase.remaining);
+        purchase.paid = parseFloat(purchase.paid) + paymentAmount;
+        purchase.remaining = parseFloat(purchase.total) - parseFloat(purchase.paid);
+        purchase.payment_status = purchase.remaining <= 0 ? 'paid' : 'partial';
+        
+        renderPurchases();
+        updateStats();
+        showToast(`تم إضافة دفعة بمبلغ ${paymentAmount.toLocaleString()} ر.س ✅`, 'success');
+      }
+    }
+
+    async function deletePurchase(id) {
+      if (!confirm('⚠️ هل أنت متأكد من حذف هذه الفاتورة؟\n\nلا يمكن التراجع عن هذا الإجراء.')) return;
+      
+      try {
+        const response = await fetch('../api.php?action=delete_purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: id })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('تم حذف الفاتورة بنجاح ✅', 'success');
+          loadPurchases();
+        } else {
+          showToast(result.message || 'حدث خطأ في الحذف', 'error');
+        }
+      } catch (error) {
+        // حذف محلي كبديل
+        purchases = purchases.filter(p => p.id !== id);
+        renderPurchases();
+        updateStats();
+        showToast('تم حذف الفاتورة بنجاح ✅', 'success');
+      }
+    }
+
+    function printPurchase() {
+      window.print();
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast show ' + type;
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // إغلاق النوافذ والقوائم المنسدلة
+    window.onclick = function(event) {
+      if (event.target.classList.contains('modal')) {
+        event.target.classList.remove('show');
+      }
+      // إخفاء قوائم الاقتراحات
+      if (!event.target.closest('.product-search')) {
+        document.querySelectorAll('.product-suggestions').forEach(el => el.classList.remove('show'));
+      }
+    };
+
+    // إغلاق قائمة الاقتراحات عند الضغط على Escape
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        document.querySelectorAll('.product-suggestions').forEach(el => el.classList.remove('show'));
+      }
+    });
+  </script>
+</body>
+</html>

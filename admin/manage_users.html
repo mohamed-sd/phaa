@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>إدارة المستخدمين - صيدليات الحياة</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-styles.css">
+  <style>
+    /* Page Specific Styles */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .role-badge.admin {
+      background: var(--danger-light);
+      color: var(--danger);
+    }
+
+    .role-badge.manager {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .role-badge.cashier {
+      background: var(--success-light);
+      color: var(--success);
+    }
+  </style>
+</head>
+<body>
+  <script src="./sidebar.js"></script>
+
+  <main>
+    <div class="topbar">
+      <h1><i class="fas fa-users"></i> إدارة المستخدمين</h1>
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-name" id="userDisplay">مرحباً</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 id="formTitle"><i class="fas fa-user-plus"></i> إضافة مستخدم جديد</h3>
+      </div>
+      <div class="card-body">
+        <form id="userForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">اسم المستخدم *</label>
+              <input type="text" id="username" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">الاسم الكامل *</label>
+              <input type="text" id="fullName" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">البريد الإلكتروني</label>
+              <input type="email" id="email" class="form-control">
+            </div>
+            <div class="form-group">
+              <label class="form-label">رقم الهاتف</label>
+              <input type="tel" id="phone" class="form-control">
+            </div>
+            <div class="form-group">
+              <label class="form-label">كلمة المرور *</label>
+              <input type="password" id="password" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">الصلاحية *</label>
+              <select id="role" class="form-control" required>
+                <option value="cashier">كاشير</option>
+                <option value="manager">مدير</option>
+                <option value="admin">مسؤول</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> حفظ المستخدم
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">
+              <i class="fas fa-times"></i> إلغاء
+            </button>
+          </div>
+          <p class="text-muted" style="margin-top: 12px; font-size: 13px;"><i class="fas fa-info-circle"></i> جميع الحقول المطلوبة مميزة بـ (*)</p>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-users-cog"></i> المستخدمين المسجلين</h3>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table" id="usersTable">
+            <thead>
+              <tr>
+                <th>اسم المستخدم</th>
+                <th>الاسم الكامل</th>
+                <th>البريد الإلكتروني</th>
+                <th>الهاتف</th>
+                <th>الصلاحية</th>
+                <th>الحالة</th>
+                <th>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./auth-check.js"></script>
+  <script>
+    let editingUserId = null;
+
+    async function checkAuthAndRedirect() {
+      try {
+        const res = await fetch('../api.php?action=check_session', { credentials: 'include' });
+        const json = await res.json();
+        
+        if (!json.success) {
+          window.location.href = '../login.php';
+          return false;
+        }
+        
+        const user = json.data;
+        if (user.role !== 'admin') {
+          alert('هذه الصفحة متاحة للمسؤولين فقط');
+          window.location.href = './dashboard.html';
+          return false;
+        }
+        
+        const initials = user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2);
+        document.getElementById('userAvatar').textContent = initials;
+        document.getElementById('userDisplay').textContent = user.full_name;
+        
+        return true;
+      } catch (err) {
+        window.location.href = '../login.php';
+        return false;
+      }
+    }
+
+    window.addEventListener('load', async () => {
+      const authOk = await checkAuthAndRedirect();
+      if (authOk) {
+        loadUsers();
+      }
+    });
+
+    const apiBase = '../api.php';
+
+    async function callAPI(action, method='GET', data=null) {
+      const url = `${apiBase}?action=${action}`;
+      const opts = { method, credentials: 'include' };
+      if (method === 'POST' && data) {
+        opts.headers = {'Content-Type':'application/json'};
+        opts.body = JSON.stringify(data);
+      }
+      const res = await fetch(url, opts);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'خطأ');
+      return json.data;
+    }
+
+    async function loadUsers() {
+      try {
+        const users = await callAPI('get_users');
+        const tbody = document.querySelector('#usersTable tbody');
+        tbody.innerHTML = '';
+        
+        users.forEach(user => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${escapeHtml(user.username)}</td>
+            <td>${escapeHtml(user.full_name)}</td>
+            <td>${escapeHtml(user.email || '-')}</td>
+            <td>${escapeHtml(user.phone || '-')}</td>
+            <td><span class="role-badge ${user.role}">${getRoleText(user.role)}</span></td>
+            <td><span class="badge ${user.is_active == 1 ? 'badge-success' : 'badge-danger'}">${user.is_active == 1 ? 'نشط' : 'معطل'}</span></td>
+            <td>
+              <div class="btn-group">
+                <button class="btn btn-sm btn-primary" onclick="editUser(${user.id})">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm ${user.is_active == 1 ? 'btn-danger' : 'btn-success'}" onclick="toggleUserStatus(${user.id}, ${user.is_active})">
+                  <i class="fas fa-${user.is_active == 1 ? 'ban' : 'check'}"></i>
+                </button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        alert('خطأ في جلب المستخدمين: ' + err.message);
+      }
+    }
+
+    document.getElementById('userForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const data = {
+        username: document.getElementById('username').value.trim(),
+        full_name: document.getElementById('fullName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        password: document.getElementById('password').value,
+        role: document.getElementById('role').value
+      };
+
+      if (!data.username || !data.full_name || !data.password) {
+        alert('الرجاء ملء جميع الحقول المطلوبة');
+        return;
+      }
+
+      try {
+        if (editingUserId) {
+          data.id = editingUserId;
+          await callAPI('update_user', 'POST', data);
+          alert('تم تحديث المستخدم بنجاح');
+        } else {
+          await callAPI('add_user', 'POST', data);
+          alert('تم إضافة المستخدم بنجاح');
+        }
+        
+        resetForm();
+        await loadUsers();
+      } catch (err) {
+        alert('خطأ: ' + err.message);
+      }
+    });
+
+    async function editUser(userId) {
+      try {
+        const users = await callAPI('get_users');
+        const user = users.find(u => u.id == userId);
+        
+        if (!user) {
+          alert('المستخدم غير موجود');
+          return;
+        }
+
+        editingUserId = userId;
+        document.getElementById('formTitle').innerHTML = '<i class="fas fa-user-edit"></i> تعديل المستخدم';
+        document.getElementById('username').value = user.username;
+        document.getElementById('fullName').value = user.full_name;
+        document.getElementById('email').value = user.email || '';
+        document.getElementById('phone').value = user.phone || '';
+        document.getElementById('password').value = '';
+        document.getElementById('password').required = false;
+        document.getElementById('role').value = user.role;
+
+        document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        alert('خطأ: ' + err.message);
+      }
+    }
+
+    async function toggleUserStatus(userId, currentStatus) {
+      const action = currentStatus == 1 ? 'تعطيل' : 'تفعيل';
+      
+      if (!confirm(`هل تريد ${action} هذا المستخدم؟`)) return;
+
+      try {
+        await callAPI('toggle_user_status', 'POST', { 
+          id: userId, 
+          is_active: currentStatus == 1 ? 0 : 1 
+        });
+        alert(`تم ${action} المستخدم بنجاح`);
+        await loadUsers();
+      } catch (err) {
+        alert('خطأ: ' + err.message);
+      }
+    }
+
+    function resetForm() {
+      editingUserId = null;
+      document.getElementById('formTitle').innerHTML = '<i class="fas fa-user-plus"></i> إضافة مستخدم جديد';
+      document.getElementById('userForm').reset();
+      document.getElementById('password').required = true;
+    }
+
+    function getRoleText(role) {
+      const roles = {
+        'admin': 'مسؤول',
+        'manager': 'مدير',
+        'cashier': 'كاشير'
+      };
+      return roles[role] || role;
+    }
+
+    function escapeHtml(s) {
+      return String(s||'').replace(/[&<>"']/g, (c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);
+    }
+  </script>
+</body>
+</html>
