@@ -425,12 +425,13 @@
     }
 
     function renderDemoReport() {
+      const cur = window.systemCurrency || 'ر.س';
       const summaryCards = {
         'sales': [
-          { label: 'إجمالي المبيعات', value: '15,420 ر.س', class: '' },
+          { label: 'إجمالي المبيعات', value: `15,420 ${cur}`, class: '' },
           { label: 'عدد الفواتير', value: '234', class: 'green' },
-          { label: 'متوسط الفاتورة', value: '65.9 ر.س', class: 'orange' },
-          { label: 'صافي الربح', value: '3,850 ر.س', class: 'green' }
+          { label: 'متوسط الفاتورة', value: `65.9 ${cur}`, class: 'orange' },
+          { label: 'صافي الربح', value: `3,850 ${cur}`, class: 'green' }
         ],
         'products': [
           { label: 'المنتجات المباعة', value: '1,250', class: '' },
@@ -439,7 +440,7 @@
           { label: 'منتجات نشطة', value: '485', class: 'green' }
         ],
         'inventory': [
-          { label: 'قيمة المخزون', value: '125,000 ر.س', class: '' },
+          { label: 'قيمة المخزون', value: `125,000 ${cur}`, class: '' },
           { label: 'إجمالي الأصناف', value: '520', class: 'green' },
           { label: 'مخزون منخفض', value: '18', class: 'orange' },
           { label: 'نفذ من المخزون', value: '5', class: 'red' }
@@ -448,18 +449,18 @@
           { label: 'تنتهي خلال 30 يوم', value: '12', class: 'red' },
           { label: 'تنتهي خلال 60 يوم', value: '28', class: 'orange' },
           { label: 'تنتهي خلال 90 يوم', value: '45', class: '' },
-          { label: 'إجمالي القيمة', value: '8,500 ر.س', class: 'orange' }
+          { label: 'إجمالي القيمة', value: `8,500 ${cur}`, class: 'orange' }
         ],
         'purchases': [
-          { label: 'إجمالي المشتريات', value: '45,200 ر.س', class: '' },
+          { label: 'إجمالي المشتريات', value: `45,200 ${cur}`, class: '' },
           { label: 'عدد الفواتير', value: '52', class: 'green' },
-          { label: 'المدفوع', value: '38,500 ر.س', class: 'green' },
-          { label: 'المستحق', value: '6,700 ر.س', class: 'red' }
+          { label: 'المدفوع', value: `38,500 ${cur}`, class: 'green' },
+          { label: 'المستحق', value: `6,700 ${cur}`, class: 'red' }
         ],
         'profit': [
-          { label: 'إجمالي الإيرادات', value: '52,000 ر.س', class: '' },
-          { label: 'التكاليف', value: '38,000 ر.س', class: 'orange' },
-          { label: 'صافي الربح', value: '14,000 ر.س', class: 'green' },
+          { label: 'إجمالي الإيرادات', value: `52,000 ${cur}`, class: '' },
+          { label: 'التكاليف', value: `38,000 ${cur}`, class: 'orange' },
+          { label: 'صافي الربح', value: `14,000 ${cur}`, class: 'green' },
           { label: 'هامش الربح', value: '26.9%', class: 'green' }
         ]
       };
@@ -477,8 +478,8 @@
           tableHtml += `<tr>
             <td>2024-01-${String(i).padStart(2, '0')}</td>
             <td>${Math.floor(Math.random() * 50) + 10}</td>
-            <td>${(Math.random() * 5000 + 1000).toFixed(2)} ر.س</td>
-            <td>${(Math.random() * 1000 + 200).toFixed(2)} ر.س</td>
+            <td>${(Math.random() * 5000 + 1000).toFixed(2)} ${cur}</td>
+            <td>${(Math.random() * 1000 + 200).toFixed(2)} ${cur}</td>
           </tr>`;
         }
       } else if (currentReportType === 'products') {
@@ -490,7 +491,7 @@
             <td>${i + 1}</td>
             <td>${p}</td>
             <td>${Math.floor(Math.random() * 200) + 50}</td>
-            <td>${(Math.random() * 3000 + 500).toFixed(2)} ر.س</td>
+            <td>${(Math.random() * 3000 + 500).toFixed(2)} ${cur}</td>
           </tr>`;
         });
       } else if (currentReportType === 'expiring') {

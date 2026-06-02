@@ -289,7 +289,11 @@ try {
   elseif ($request === 'get_supplier_payments') {
     get_supplier_payments();
   }
-  
+
+  elseif ($request === 'get_purchase_payments') {
+    get_purchase_payments();
+  }
+
   else {
     json_response(false, 'طلب غير صحيح');
   }
@@ -1825,20 +1829,47 @@ function add_supplier_payment() {
 
 function get_supplier_payments() {
   global $conn;
-  
+
   $supplier_id = isset($_GET['supplier_id']) ? intval($_GET['supplier_id']) : 0;
-  
+
   $where = $supplier_id > 0 ? "WHERE sp.supplier_id = $supplier_id" : "";
-  
-  $query = "SELECT sp.*, s.name as supplier_name, p.purchase_number 
-            FROM supplier_payments sp 
-            LEFT JOIN suppliers s ON sp.supplier_id = s.id 
-            LEFT JOIN purchases p ON sp.purchase_id = p.id 
-            $where 
+
+  $query = "SELECT sp.*, s.name as supplier_name, p.purchase_number
+            FROM supplier_payments sp
+            LEFT JOIN suppliers s ON sp.supplier_id = s.id
+            LEFT JOIN purchases p ON sp.purchase_id = p.id
+            $where
             ORDER BY sp.payment_date DESC, sp.created_at DESC";
-  
+
   $result = get_all($query);
   json_response(true, 'تم جلب المدفوعات', $result);
+}
+
+// ============================================
+// PURCHASE PAYMENTS LEDGER (مدفوعات فاتورة بعينها)
+// ============================================
+
+function get_purchase_payments() {
+  $purchase_id = isset($_GET['purchase_id']) ? intval($_GET['purchase_id']) : 0;
+
+  if ($purchase_id <= 0) {
+    json_response(false, 'معرّف الفاتورة مطلوب');
+    return;
+  }
+
+  // Return all payments linked to this specific purchase invoice,
+  // including the user's full name for the payment history table.
+  $query = "SELECT sp.*,
+                   u.full_name   AS user_name,
+                   p.purchase_number
+            FROM supplier_payments sp
+            LEFT JOIN users     u ON sp.user_id     = u.id
+            LEFT JOIN purchases p ON sp.purchase_id = p.id
+            WHERE sp.purchase_id = $purchase_id
+            ORDER BY sp.payment_date ASC, sp.created_at ASC";
+
+  $result = get_all($query);
+  json_response(true, 'تم جلب مدفوعات الفاتورة', $result);
 }
 
 ?>

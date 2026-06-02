@@ -14,6 +14,47 @@
       gap: 16px;
     }
 
+    /* Collapsible Form Card */
+    .user-form-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .user-form-header {
+      background: linear-gradient(135deg, var(--primary) 0%, #0e7490 100%);
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .user-form-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+    }
+    .user-form-body { padding: 24px; }
+    .form-collapsed .user-form-body { display: none; }
+    .toggle-form-btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .toggle-form-btn:hover { background: rgba(255,255,255,0.3); }
+
     .role-badge {
       display: inline-block;
       padding: 4px 12px;
@@ -50,11 +91,12 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <h3 id="formTitle"><i class="fas fa-user-plus"></i> إضافة مستخدم جديد</h3>
+    <div class="user-form-card form-collapsed" id="userFormCard">
+      <div class="user-form-header" onclick="toggleForm()">
+        <h2 id="formTitle"><i class="fas fa-user-plus"></i> إضافة مستخدم جديد</h2>
+        <button class="toggle-form-btn" id="toggleBtn"><i class="fas fa-chevron-down" id="toggleIcon"></i></button>
       </div>
-      <div class="card-body">
+      <div class="user-form-body" id="userFormBody">
         <form id="userForm">
           <div class="form-grid">
             <div class="form-group">
@@ -127,6 +169,20 @@
   <script src="./auth-check.js"></script>
   <script>
     let editingUserId = null;
+    let isFormCollapsed = true;
+
+    function toggleForm() {
+      isFormCollapsed = !isFormCollapsed;
+      const card = document.getElementById('userFormCard');
+      const icon = document.getElementById('toggleIcon');
+      if (isFormCollapsed) {
+        card.classList.add('form-collapsed');
+        icon.className = 'fas fa-chevron-down';
+      } else {
+        card.classList.remove('form-collapsed');
+        icon.className = 'fas fa-chevron-up';
+      }
+    }
 
     async function checkAuthAndRedirect() {
       try {
@@ -265,7 +321,8 @@
         document.getElementById('password').required = false;
         document.getElementById('role').value = user.role;
 
-        document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+        if (isFormCollapsed) toggleForm();
+        document.getElementById('userFormCard').scrollIntoView({ behavior: 'smooth' });
       } catch (err) {
         alert('خطأ: ' + err.message);
       }
@@ -293,6 +350,7 @@
       document.getElementById('formTitle').innerHTML = '<i class="fas fa-user-plus"></i> إضافة مستخدم جديد';
       document.getElementById('userForm').reset();
       document.getElementById('password').required = true;
+      if (!isFormCollapsed) toggleForm();
     }
 
     function getRoleText(role) {

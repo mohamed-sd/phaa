@@ -251,12 +251,20 @@
     }
 
     .filters-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: 2fr 1.5fr 1.5fr auto;
       gap: 12px;
       padding: 16px 24px;
       background: #f8fafc;
-      flex-wrap: wrap;
       align-items: center;
+    }
+
+    @media (max-width: 1200px) {
+      .filters-row { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      .filters-row { grid-template-columns: 1fr; }
     }
 
     .filters-row input,
@@ -265,13 +273,21 @@
       border: 2px solid #e2e8f0;
       border-radius: 8px;
       font-size: 14px;
-      min-width: 180px;
+      width: 100%;
+      box-sizing: border-box;
+      transition: all 0.3s;
     }
 
     .filters-row input:focus,
     .filters-row select:focus {
       outline: none;
       border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(8, 145, 178, 0.1);
+    }
+
+    .filters-row .btn {
+      white-space: nowrap;
+      padding: 10px 16px;
     }
 
     /* Table Styles */
@@ -413,25 +429,25 @@
       <div class="stat-card">
         <div class="stat-icon warning"><i class="fas fa-shopping-cart"></i></div>
         <div class="stat-info">
-          <h3 id="totalPurchases">0 ر.س</h3>
+          <h3 id="totalPurchases">0</h3>
           <p>إجمالي المشتريات</p>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon danger"><i class="fas fa-money-bill-wave"></i></div>
         <div class="stat-info">
-          <h3 id="totalBalance">0 ر.س</h3>
+          <h3 id="totalBalance">0</h3>
           <p>إجمالي المستحقات</p>
         </div>
       </div>
     </div>
 
     <!-- فورم إضافة/تعديل مورد -->
-    <div class="supplier-form-card" id="supplierFormCard">
+    <div class="supplier-form-card form-collapsed" id="supplierFormCard">
       <div class="supplier-form-header" onclick="toggleForm()">
         <h2><i class="fas fa-user-plus"></i> <span id="formTitle">إضافة مورد جديد</span></h2>
         <button class="toggle-btn" id="toggleBtn">
-          <i class="fas fa-chevron-up" id="toggleIcon"></i>
+          <i class="fas fa-chevron-down" id="toggleIcon"></i>
         </button>
       </div>
       <div class="supplier-form-body" id="supplierFormBody">
@@ -574,8 +590,8 @@
   </main>
 
   <!-- Modal عرض تفاصيل المورد -->
-  <div id="detailsModal" class="modal">
-    <div class="modal-content" style="max-width: 700px;">
+  <div id="detailsModal" class="modal-overlay">
+    <div class="modal" style="max-width: 700px; width: 90%;">
       <div class="modal-header">
         <h3><i class="fas fa-user"></i> تفاصيل المورد</h3>
         <button class="modal-close" onclick="closeDetailsModal()">&times;</button>
@@ -595,7 +611,7 @@
   <script src="auth-check.js"></script>
   <script>
     let suppliers = [];
-    let isFormCollapsed = false;
+    let isFormCollapsed = true;
     let editingId = null;
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -646,10 +662,11 @@
       const totalPurchases = suppliers.reduce((sum, s) => sum + parseFloat(s.total_purchases || 0), 0);
       const totalBalance = suppliers.reduce((sum, s) => sum + parseFloat(s.balance || 0), 0);
       
+      const cur = window.systemCurrency || 'ر.س';
       document.getElementById('totalSuppliers').textContent = suppliers.length;
       document.getElementById('activeSuppliers').textContent = active;
-      document.getElementById('totalPurchases').textContent = totalPurchases.toLocaleString() + ' ر.س';
-      document.getElementById('totalBalance').textContent = totalBalance.toLocaleString() + ' ر.س';
+      document.getElementById('totalPurchases').textContent = totalPurchases.toLocaleString() + ' ' + cur;
+      document.getElementById('totalBalance').textContent = totalBalance.toLocaleString() + ' ' + cur;
       document.getElementById('suppliersCount').textContent = suppliers.length + ' مورد';
     }
 
@@ -674,11 +691,12 @@
       
       emptyState.style.display = 'none';
       
+      const cur = window.systemCurrency || 'ر.س';
       tbody.innerHTML = suppliers.map((supplier, index) => {
         const balance = parseFloat(supplier.balance || 0);
         const totalPurchases = parseFloat(supplier.total_purchases || 0);
         const totalPaid = parseFloat(supplier.total_paid || 0);
-        
+
         return `
           <tr>
             <td><strong style="color: var(--primary);">${supplier.id}</strong></td>
@@ -692,10 +710,10 @@
               </div>
             </td>
             <td>${supplier.city || '-'}</td>
-            <td><strong>${totalPurchases.toLocaleString()} ر.س</strong></td>
-            <td style="color: var(--success);">${totalPaid.toLocaleString()} ر.س</td>
+            <td><strong>${totalPurchases.toLocaleString()} ${cur}</strong></td>
+            <td style="color: var(--success);">${totalPaid.toLocaleString()} ${cur}</td>
             <td class="${balance > 0 ? 'balance-positive' : 'balance-zero'}">
-              ${balance.toLocaleString()} ر.س
+              ${balance.toLocaleString()} ${cur}
             </td>
             <td>
               <span class="badge ${supplier.is_active == 1 ? 'status-active' : 'status-inactive'}">
@@ -761,11 +779,12 @@
         return;
       }
       
+      const cur = window.systemCurrency || 'ر.س';
       tbody.innerHTML = filtered.map((supplier) => {
         const balance = parseFloat(supplier.balance || 0);
         const totalPurchases = parseFloat(supplier.total_purchases || 0);
         const totalPaid = parseFloat(supplier.total_paid || 0);
-        
+
         return `
           <tr>
             <td><strong style="color: var(--primary);">${supplier.id}</strong></td>
@@ -779,10 +798,10 @@
               </div>
             </td>
             <td>${supplier.city || '-'}</td>
-            <td><strong>${totalPurchases.toLocaleString()} ر.س</strong></td>
-            <td style="color: var(--success);">${totalPaid.toLocaleString()} ر.س</td>
+            <td><strong>${totalPurchases.toLocaleString()} ${cur}</strong></td>
+            <td style="color: var(--success);">${totalPaid.toLocaleString()} ${cur}</td>
             <td class="${balance > 0 ? 'balance-positive' : 'balance-zero'}">
-              ${balance.toLocaleString()} ر.س
+              ${balance.toLocaleString()} ${cur}
             </td>
             <td>
               <span class="badge ${supplier.is_active == 1 ? 'status-active' : 'status-inactive'}">
@@ -823,7 +842,7 @@
     }
 
     function editSupplier(id) {
-      const supplier = suppliers.find(s => s.id === id);
+      const supplier = suppliers.find(s => String(s.id) === String(id));
       if (!supplier) return;
       
       editingId = id;
@@ -900,32 +919,33 @@
     }
 
     function viewSupplier(id) {
-      const supplier = suppliers.find(s => s.id === id);
+      const supplier = suppliers.find(s => String(s.id) === String(id));
       if (!supplier) return;
       
       const balance = parseFloat(supplier.balance || 0);
       const totalPurchases = parseFloat(supplier.total_purchases || 0);
       const totalPaid = parseFloat(supplier.total_paid || 0);
       
+      const cur = window.systemCurrency || 'ر.س';
       document.getElementById('supplierDetails').innerHTML = `
         <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, var(--primary) 0%, #0e7490 100%); color: white; border-radius: 12px; margin-bottom: 20px;">
           <i class="fas fa-building" style="font-size: 40px; margin-bottom: 10px;"></i>
           <h2 style="margin: 0; font-size: 24px;">${supplier.name}</h2>
           ${supplier.contact_person ? `<p style="margin: 8px 0 0; opacity: 0.9;">${supplier.contact_person}</p>` : ''}
         </div>
-        
+
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
           <div style="background: #fef3c7; padding: 16px; border-radius: 10px; text-align: center;">
             <div style="font-size: 12px; color: #92400e; margin-bottom: 4px;">إجمالي المشتريات</div>
-            <div style="font-size: 20px; font-weight: 700; color: #92400e;">${totalPurchases.toLocaleString()} ر.س</div>
+            <div style="font-size: 20px; font-weight: 700; color: #92400e;">${totalPurchases.toLocaleString()} ${cur}</div>
           </div>
           <div style="background: #d1fae5; padding: 16px; border-radius: 10px; text-align: center;">
             <div style="font-size: 12px; color: #065f46; margin-bottom: 4px;">المدفوع</div>
-            <div style="font-size: 20px; font-weight: 700; color: #065f46;">${totalPaid.toLocaleString()} ر.س</div>
+            <div style="font-size: 20px; font-weight: 700; color: #065f46;">${totalPaid.toLocaleString()} ${cur}</div>
           </div>
           <div style="background: ${balance > 0 ? '#fee2e2' : '#d1fae5'}; padding: 16px; border-radius: 10px; text-align: center;">
             <div style="font-size: 12px; color: ${balance > 0 ? '#991b1b' : '#065f46'}; margin-bottom: 4px;">المستحق</div>
-            <div style="font-size: 20px; font-weight: 700; color: ${balance > 0 ? '#991b1b' : '#065f46'};">${balance.toLocaleString()} ر.س</div>
+            <div style="font-size: 20px; font-weight: 700; color: ${balance > 0 ? '#991b1b' : '#065f46'};">${balance.toLocaleString()} ${cur}</div>
           </div>
         </div>
         
@@ -951,7 +971,7 @@
     }
 
     async function deleteSupplier(id) {
-      const supplier = suppliers.find(s => s.id === id);
+      const supplier = suppliers.find(s => String(s.id) === String(id));
       if (!supplier) return;
       
       if (!confirm(`⚠️ هل أنت متأكد من حذف المورد "${supplier.name}"؟\n\nلا يمكن التراجع عن هذا الإجراء.`)) {
@@ -988,7 +1008,7 @@
 
     // إغلاق النوافذ عند الضغط خارجها
     window.onclick = function(event) {
-      if (event.target.classList.contains('modal')) {
+      if (event.target.classList.contains('modal-overlay')) {
         event.target.classList.remove('show');
       }
     };

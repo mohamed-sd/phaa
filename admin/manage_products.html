@@ -25,6 +25,47 @@
       gap: 8px;
       align-items: center;
     }
+
+    /* Collapsible Form Card */
+    .product-form-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .product-form-header {
+      background: linear-gradient(135deg, var(--primary) 0%, #0e7490 100%);
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .product-form-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+    }
+    .product-form-body { padding: 24px; }
+    .form-collapsed .product-form-body { display: none; }
+    .toggle-form-btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .toggle-form-btn:hover { background: rgba(255,255,255,0.3); }
   </style>
   <script src="./sidebar.js"></script>
 </head>
@@ -40,11 +81,12 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <h3><i class="fas fa-plus-circle"></i> إضافة / تعديل المنتج</h3>
+    <div class="product-form-card form-collapsed" id="productFormCard">
+      <div class="product-form-header" onclick="toggleForm()">
+        <h2><i class="fas fa-plus-circle"></i> إضافة / تعديل منتج</h2>
+        <button class="toggle-form-btn" id="toggleBtn"><i class="fas fa-chevron-down" id="toggleIcon"></i></button>
       </div>
-      <div class="card-body">
+      <div class="product-form-body" id="productFormBody">
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label">الفئة</label>
@@ -109,6 +151,7 @@
         </div>
         <div class="form-actions">
           <button id="addProdBtn" class="btn btn-primary"><i class="fas fa-save"></i> إضافة منتج</button>
+          <button type="button" class="btn btn-secondary" onclick="toggleForm()"><i class="fas fa-times"></i> إغلاق</button>
         </div>
         <p class="text-muted" style="margin-top: 12px; font-size: 13px;"><i class="fas fa-info-circle"></i> اضغط على تعديل لتحديث بيانات المنتج</p>
       </div>
@@ -188,6 +231,20 @@
 
     const apiBase = '../api.php';
     let categoriesMap = {};
+    let isFormCollapsed = true;
+
+    function toggleForm() {
+      isFormCollapsed = !isFormCollapsed;
+      const card = document.getElementById('productFormCard');
+      const icon = document.getElementById('toggleIcon');
+      if (isFormCollapsed) {
+        card.classList.add('form-collapsed');
+        icon.className = 'fas fa-chevron-down';
+      } else {
+        card.classList.remove('form-collapsed');
+        icon.className = 'fas fa-chevron-up';
+      }
+    }
 
     // حساب العلب والشرائط تلقائياً من الكراتين
     function calculateUnits() {
@@ -450,7 +507,8 @@
           const addBtn = document.getElementById('addProdBtn');
           addBtn.innerHTML = '<i class="fas fa-save"></i> حفظ التعديلات';
           addBtn.dataset.editId = id;
-          document.querySelector('.form-grid').scrollIntoView({ behavior: 'smooth' });
+          if (isFormCollapsed) toggleForm();
+          document.getElementById('productFormCard').scrollIntoView({ behavior: 'smooth' });
         } catch (err) { alert('خطأ: '+err.message); }
       }
     });

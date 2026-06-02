@@ -114,14 +114,17 @@ async function callAPI(action, method = 'GET', data = null) {
 // Utility Functions
 // ============================================
 
+// Loaded from pharmacy_settings (currency_symbol key)
+let pharmacyCurrency = 'ج.م';
+
 /**
- * Format number as Egyptian currency
+ * Format number using the pharmacy's configured currency symbol
  */
 function formatCurrency(amount) {
   return amount.toLocaleString('ar-EG', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }) + ' ج.م';
+  }) + ' ' + pharmacyCurrency;
 }
 
 /**
@@ -245,6 +248,21 @@ function getMaxUnits(product, unit) {
   return Math.floor(stockStrips / unitSize);
 }
 
+/**
+ * Available strips = DB stock minus all cart quantities for this product.
+ * Used for display so the product card always reflects what's still obtainable.
+ */
+function getAvailableStrips(product) {
+  const dbStrips = getStockStrips(product);
+  let cartedStrips = 0;
+  for (const item of Object.values(appState.cart)) {
+    if (String(item.productId) === String(product.id)) {
+      cartedStrips += item.quantity * getUnitSize(product, item.unit);
+    }
+  }
+  return Math.max(0, dbStrips - cartedStrips);
+}
+
 // ============================================
 // Data Loading
 // ============================================
@@ -317,19 +335,22 @@ function renderCategories() {
 
 /**
  * Render product cards
+ * When a search query is active, searches ALL products across ALL categories
+ * (by name, barcode, and description). Otherwise shows current category.
  */
 function renderProducts() {
   productsEl.innerHTML = '';
-  
-  const category = appState.data.categories.find(c => c.id === appState.activeCategory);
-  if (!category) return;
-  
-  let products = [...category.products];
-  
-  // Apply search filter
-  if (searchInput.value.trim()) {
-    const query = searchInput.value.trim().toLowerCase();
-    products = products.filter(p => p.name.toLowerCase().includes(query));
+
+  const query = searchInput.value.trim();
+
+  let products;
+  if (query) {
+    // Cross-category search: name + barcode + description
+    products = filterAllProducts(query);
+  } else {
+    const category = appState.data.categories.find(c => c.id === appState.activeCategory);
+    if (!category) return;
+    products = [...category.products];
   }
   
   // Apply sorting
@@ -359,7 +380,9 @@ function renderProducts() {
   }
   
   products.forEach(product => {
-    const stockStrips = getStockStrips(product);
+    // Use availableStrips (DB stock minus cart) for display so the card always
+    // reflects what the customer can still add to the cart.
+    const stockStrips = getAvailableStrips(product);
     const { stripsPerBox, stripsPerCarton } = getPackaging(product);
     const stockBoxes = Math.floor(stockStrips / stripsPerBox);
     const stockCartons = Math.floor(stockStrips / stripsPerCarton);
@@ -411,6 +434,56 @@ function renderProducts() {
 }
 
 /**
+ * Efficiently update stock displays on product cards without full re-render.
+ * Called after every cart mutation so the displayed quantity stays in sync.
+ */
+function refreshProductStockDisplays() {
+  document.querySelectorAll('.product-card').forEach(card => {
+    const addBtn = card.querySelector('.btn-add-cart');
+    if (!addBtn) return;
+    const productId = addBtn.getAttribute('data-id');
+    const product = findProduct(productId);
+    if (!product) return;
+
+    const availStrips = getAvailableStrips(product);
+    const { stripsPerBox, stripsPerCarton } = getPackaging(product);
+    const availBoxes = Math.floor(availStrips / stripsPerBox);
+    const availCartons = Math.floor(availStrips / stripsPerCarton);
+
+    // Update stock line
+    const stockEl = card.querySelector('.product-stock');
+    if (stockEl) {
+      stockEl.textContent = `المخزون: ${availStrips} شريط | ${availBoxes} علبة | ${availCartons} كرتونة`;
+    }
+
+    // Update availability badge
+    const badge = card.querySelector('.product-badge');
+    if (badge) {
+      const status = availStrips === 0 ? 'out-of-stock' : availStrips < 10 ? 'low-stock' : 'in-stock';
+      const label  = availStrips === 0 ? 'غير متوفر'   : availStrips < 10 ? 'كمية محدودة' : 'متوفر';
+      badge.className = `product-badge ${status}`;
+      badge.textContent = label;
+    }
+
+    // Enable/disable add button
+    addBtn.disabled = availStrips === 0;
+
+    // Rebuild unit options to only show purchasable units
+    const unitSelect = card.querySelector('.unit-select');
+    if (unitSelect) {
+      const prevUnit = unitSelect.value;
+      const units = [];
+      if (availStrips >= 1)           units.push('strip');
+      if (availStrips >= stripsPerBox)    units.push('box');
+      if (availStrips >= stripsPerCarton) units.push('carton');
+      unitSelect.innerHTML = units.map(u => `<option value="${u}">${getUnitLabel(u)}</option>`).join('');
+      if (units.includes(prevUnit)) unitSelect.value = prevUnit;
+      unitSelect.disabled = units.length === 0;
+    }
+  });
+}
+
+/**
  * Render cart items
  */
 function renderCart() {
@@ -425,9 +498,9 @@ function renderCart() {
       </div>
     `;
     cartCountEl.style.display = 'none';
-    subTotalEl.textContent = '0.00 ج.م';
-    taxEl.textContent = '0.00 ج.م';
-    grandTotalEl.textContent = '0.00 ج.م';
+    subTotalEl.textContent = '0.00 ' + pharmacyCurrency;
+    taxEl.textContent = '0.00 ' + pharmacyCurrency;
+    grandTotalEl.textContent = '0.00 ' + pharmacyCurrency;
     return;
   }
   
@@ -507,6 +580,33 @@ function findProduct(id) {
 }
 
 /**
+ * Get all products across all categories (flat list)
+ */
+function getAllProducts() {
+  const all = [];
+  for (const category of appState.data.categories) {
+    for (const product of category.products) {
+      all.push(product);
+    }
+  }
+  return all;
+}
+
+/**
+ * Filter all products across all categories by search query
+ * Searches: name, barcode, description
+ */
+function filterAllProducts(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return [];
+  return getAllProducts().filter(p =>
+    (p.name && p.name.toLowerCase().includes(q)) ||
+    (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+    (p.description && p.description.toLowerCase().includes(q))
+  );
+}
+
+/**
  * Add product to cart
  */
 function addToCart(productId, unit = 'strip', quantity = 1) {
@@ -526,6 +626,7 @@ function addToCart(productId, unit = 'strip', quantity = 1) {
   appState.cart[cartKey] = { productId, unit, quantity: newQty };
   saveCart();
   renderCart();
+  refreshProductStockDisplays();
   showNotification(`تم إضافة "${product.name}" إلى السلة (${getUnitLabel(unit)})`, 'success');
 }
 
@@ -536,6 +637,7 @@ function removeFromCart(cartKey) {
   delete appState.cart[cartKey];
   saveCart();
   renderCart();
+  refreshProductStockDisplays();
   showNotification('تم حذف المنتج من السلة', 'success');
 }
 
@@ -565,6 +667,7 @@ function updateQty(cartKey, quantity) {
   appState.cart[cartKey].quantity = quantity;
   saveCart();
   renderCart();
+  refreshProductStockDisplays();
 }
 
 /**
@@ -587,6 +690,7 @@ function clearCart() {
     appState.cart = {};
     saveCart();
     renderCart();
+    refreshProductStockDisplays();
     showNotification('تم مسح السلة', 'success');
   }
 }
@@ -813,15 +917,15 @@ function generateInvoice() {
         <div class="summary">
           <div class="summary-row">
             <span>المجموع قبل الضريبة:</span>
-            <span>${subtotal.toFixed(2)} ج.م</span>
+            <span>${subtotal.toFixed(2)} ${pharmacyCurrency}</span>
           </div>
           <div class="summary-row">
             <span>الضريبة (5%):</span>
-            <span>${tax} ج.م</span>
+            <span>${tax} ${pharmacyCurrency}</span>
           </div>
           <div class="summary-row total">
             <span>الإجمالي:</span>
-            <span>${total} ج.م</span>
+            <span>${total} ${pharmacyCurrency}</span>
           </div>
         </div>
         
@@ -1007,9 +1111,51 @@ document.addEventListener('change', (e) => {
   }
 });
 
-// Search
+// Search — with barcode auto-add detection
+let _barcodeBuffer = '';
+let _barcodeTimer = null;
+
 searchInput.addEventListener('input', (e) => {
   renderProducts();
+
+  // Barcode scanner detection: scanners type the full code rapidly then send Enter.
+  // We buffer characters; if >= 4 chars arrive within 150ms and no exact match was
+  // triggered by keydown Enter, check for exact barcode match and auto-add.
+  clearTimeout(_barcodeTimer);
+  _barcodeBuffer = searchInput.value;
+  _barcodeTimer = setTimeout(() => {
+    _barcodeBuffer = '';
+  }, 300);
+});
+
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const query = searchInput.value.trim();
+    if (!query) return;
+
+    // Try to find an exact barcode match across ALL products
+    let exactMatch = null;
+    for (const category of appState.data.categories) {
+      const found = category.products.find(
+        p => p.barcode && p.barcode.trim() === query
+      );
+      if (found) { exactMatch = found; break; }
+    }
+
+    // Fall back to single result from current filtered list
+    if (!exactMatch) {
+      const allProducts = getAllProducts();
+      const filtered = filterAllProducts(query);
+      if (filtered.length === 1) exactMatch = filtered[0];
+    }
+
+    if (exactMatch) {
+      const unit = 'strip';
+      addToCart(exactMatch.id, unit, 1);
+      searchInput.value = '';
+      renderProducts();
+    }
+  }
 });
 
 // Sort
@@ -1039,16 +1185,30 @@ document.addEventListener('keydown', (e) => {
  * Initialize the application
  */
 async function initializeApp() {
+  // Load currency symbol from pharmacy settings
+  try {
+    const settingsRes = await fetch('./api.php?action=get_settings');
+    const settingsJson = await settingsRes.json();
+    if (settingsJson.success && settingsJson.data && settingsJson.data.currency_symbol) {
+      pharmacyCurrency = settingsJson.data.currency_symbol;
+    }
+  } catch (e) {
+    console.warn('Could not load pharmacy settings, using default currency:', e);
+  }
+
   appState.data = await loadProducts();
-  
+
   if (!appState.activeCategory && appState.data.categories.length > 0) {
     appState.activeCategory = appState.data.categories[0].id;
   }
-  
+
   renderCategories();
   renderProducts();
   renderCart();
-  
+
+  // Auto-focus barcode/search field so scanner can read immediately
+  searchInput.focus();
+
   console.log('✅ Pharmacy POS System Initialized');
 }
 

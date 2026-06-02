@@ -439,12 +439,24 @@
     }
 
     .filters-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: 2fr 1.5fr 1.5fr 1fr 1fr auto;
       gap: 12px;
       padding: 16px 24px;
       background: #f8fafc;
-      flex-wrap: wrap;
       align-items: center;
+    }
+
+    @media (max-width: 1200px) {
+      .filters-row { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .filters-row { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+      .filters-row { grid-template-columns: 1fr; }
     }
 
     .filters-row input,
@@ -454,6 +466,8 @@
       border-radius: 8px;
       font-size: 14px;
       transition: all 0.3s;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .filters-row input:focus,
@@ -465,6 +479,7 @@
 
     .filters-row .btn {
       padding: 10px 14px;
+      white-space: nowrap;
     }
 
     /* Table Styles */
@@ -536,6 +551,146 @@
     .form-collapsed .purchase-form-header {
       cursor: pointer;
     }
+
+    /* ── Modal Overlay ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+
+    .modal-box {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-box.modal-lg { max-width: 820px; }
+
+    .modal-hdr {
+      padding: 20px 24px;
+      background: linear-gradient(135deg, var(--primary) 0%, #0e7490 100%);
+      color: white;
+      border-radius: 16px 16px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-hdr h3 {
+      font-size: 17px; font-weight: 600;
+      display: flex; align-items: center; gap: 10px; margin: 0;
+    }
+    .modal-close-btn {
+      background: rgba(255,255,255,0.2);
+      border: none; color: white;
+      width: 34px; height: 34px;
+      border-radius: 8px; cursor: pointer;
+      font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .modal-close-btn:hover { background: rgba(255,255,255,0.4); }
+
+    .modal-bdy { padding: 24px; }
+
+    .modal-ftr {
+      padding: 16px 24px;
+      border-top: 2px solid #e2e8f0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* Payment info summary box inside modal */
+    .pay-summary {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .pay-summary-item .lbl { font-size: 11px; color: #64748b; margin-bottom: 3px; }
+    .pay-summary-item .val { font-size: 14px; font-weight: 700; color: #1e293b; }
+    .pay-summary-item .val.success { color: var(--success); }
+    .pay-summary-item .val.danger  { color: var(--danger); }
+
+    /* View modal helpers */
+    .detail-section-title {
+      font-size: 14px; font-weight: 600; color: #1e293b;
+      margin-bottom: 12px; padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .detail-section-title i { color: var(--primary); }
+
+    .detail-header-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) { .detail-header-grid { grid-template-columns: 1fr 1fr; } }
+    .detail-header-grid .lbl { font-size: 11px; color: #64748b; margin-bottom: 3px; }
+    .detail-header-grid .val { font-size: 14px; font-weight: 600; color: #1e293b; }
+
+    .hist-table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+    }
+    .hist-table th {
+      background: #f8fafc; padding: 10px 12px;
+      text-align: right; font-weight: 600; color: #475569;
+      border-bottom: 2px solid #e2e8f0;
+      white-space: nowrap;
+    }
+    .hist-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+    .hist-table tr:last-child td { border-bottom: none; }
+    .hist-table tr:hover td { background: #f8fafc; }
+
+    .detail-totals {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    @media (max-width: 600px) { .detail-totals { grid-template-columns: 1fr; } }
+    .dtotal-box {
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      border: 1px solid #e2e8f0;
+    }
+    .dtotal-box .lbl { font-size: 11px; color: #64748b; margin-bottom: 6px; }
+    .dtotal-box .val { font-size: 20px; font-weight: 700; color: #1e293b; }
+    .dtotal-box.invoice { background: #f0fdfa; border-color: #99f6e4; }
+    .dtotal-box.paid    { background: #f0fdf4; border-color: #86efac; }
+    .dtotal-box.paid .val  { color: var(--success); }
+    .dtotal-box.remain  { background: #fff7ed; border-color: #fed7aa; }
+    .dtotal-box.remain .val { color: var(--danger); }
+
+    .modal-loading {
+      text-align: center; padding: 48px 24px;
+      color: #64748b; font-size: 13px; line-height: 1.8;
+    }
+    .modal-loading i { font-size: 36px; display: block; margin-bottom: 10px; color: var(--primary); }
   </style>
 </head>
 <body>
@@ -565,32 +720,32 @@
       <div class="stat-card">
         <div class="stat-icon warning"><i class="fas fa-money-bill-wave"></i></div>
         <div class="stat-info">
-          <h3 id="totalAmount">0 ر.س</h3>
+          <h3 id="totalAmount">0</h3>
           <p>إجمالي المشتريات</p>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
         <div class="stat-info">
-          <h3 id="paidAmountStat">0 ر.س</h3>
+          <h3 id="paidAmountStat">0</h3>
           <p>المدفوع</p>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon danger"><i class="fas fa-clock"></i></div>
         <div class="stat-info">
-          <h3 id="remainingAmount">0 ر.س</h3>
+          <h3 id="remainingAmount">0</h3>
           <p>المستحق</p>
         </div>
       </div>
     </div>
 
     <!-- فورم إضافة فاتورة شراء جديدة -->
-    <div class="purchase-form-card" id="purchaseFormCard">
+    <div class="purchase-form-card form-collapsed" id="purchaseFormCard">
       <div class="purchase-form-header" onclick="toggleForm()">
         <h2><i class="fas fa-plus-circle"></i> إضافة فاتورة شراء جديدة</h2>
         <button class="toggle-form-btn" id="toggleBtn">
-          <i class="fas fa-chevron-up" id="toggleIcon"></i>
+          <i class="fas fa-chevron-down" id="toggleIcon"></i>
         </button>
       </div>
       <div class="purchase-form-body" id="purchaseFormBody">
@@ -656,7 +811,7 @@
           <div class="totals-grid">
             <div class="total-box">
               <div class="label">المجموع الفرعي</div>
-              <div class="value" id="subtotal">0 ر.س</div>
+              <div class="value" id="subtotal">0</div>
             </div>
             <div class="total-box">
               <div class="label">الخصم</div>
@@ -664,7 +819,7 @@
             </div>
             <div class="total-box grand">
               <div class="label">الإجمالي النهائي</div>
-              <div class="value" id="grandTotal">0 ر.س</div>
+              <div class="value" id="grandTotal">0</div>
             </div>
             <div class="total-box">
               <div class="label">المبلغ المدفوع</div>
@@ -672,7 +827,7 @@
             </div>
             <div class="total-box">
               <div class="label">المتبقي</div>
-              <div class="value" id="remainingValue" style="color: var(--danger);">0 ر.س</div>
+              <div class="value" id="remainingValue" style="color: var(--danger);">0</div>
             </div>
           </div>
 
@@ -707,7 +862,7 @@
       </div>
       
       <div class="filters-row">
-        <input type="text" id="searchPurchase" placeholder="🔍 بحث سريع في الفواتير..." style="flex: 1; min-width: 250px;" onkeyup="searchPurchases()">
+        <input type="text" id="searchPurchase" placeholder="🔍 بحث سريع في الفواتير..." onkeyup="searchPurchases()">
         <select id="filterSupplier" onchange="filterPurchases()">
           <option value="">جميع الموردين</option>
         </select>
@@ -755,13 +910,95 @@
   <!-- Toast Notification -->
   <div id="toast" class="toast"></div>
 
+  <!-- ═══════════════════════════════════════════════════
+       PAYMENT MODAL – إضافة دفعة جديدة
+       ═══════════════════════════════════════════════════ -->
+  <div id="paymentModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <h3><i class="fas fa-money-bill-wave"></i> إضافة دفعة جديدة</h3>
+        <button class="modal-close-btn" onclick="closePaymentModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-bdy">
+
+        <!-- purchase summary -->
+        <div class="pay-summary" id="paySummary">
+          <div class="pay-summary-item">
+            <div class="lbl">المورد</div>
+            <div class="val" id="paySummarySupplier">—</div>
+          </div>
+          <div class="pay-summary-item">
+            <div class="lbl">إجمالي الفاتورة</div>
+            <div class="val" id="paySummaryTotal">—</div>
+          </div>
+          <div class="pay-summary-item">
+            <div class="lbl">المدفوع سابقاً</div>
+            <div class="val success" id="paySummaryPaid">—</div>
+          </div>
+          <div class="pay-summary-item">
+            <div class="lbl">المتبقي</div>
+            <div class="val danger" id="paySummaryRemaining">—</div>
+          </div>
+        </div>
+
+        <!-- form fields -->
+        <div class="form-group" style="margin-bottom:16px;">
+          <label><i class="fas fa-coins" style="color:var(--primary);margin-left:6px;"></i> مبلغ الدفعة *</label>
+          <input type="number" id="payAmount" min="0.01" step="0.01" placeholder="0.00" style="margin-top:6px;">
+          <small id="payAmountHint" style="display:block;margin-top:4px;color:#64748b;font-size:12px;"></small>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px;">
+          <label><i class="fas fa-credit-card" style="color:var(--primary);margin-left:6px;"></i> طريقة الدفع</label>
+          <select id="payMethod" style="margin-top:6px;">
+            <option value="cash">💵 نقداً</option>
+            <option value="transfer">🏦 تحويل بنكي</option>
+            <option value="check">📋 شيك</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px;">
+          <label><i class="fas fa-calendar" style="color:var(--primary);margin-left:6px;"></i> تاريخ الدفع</label>
+          <input type="date" id="payDate" style="margin-top:6px;">
+        </div>
+
+        <div class="form-group">
+          <label><i class="fas fa-sticky-note" style="color:var(--primary);margin-left:6px;"></i> ملاحظات</label>
+          <input type="text" id="payNotes" placeholder="اختياري" style="margin-top:6px;">
+        </div>
+      </div>
+      <div class="modal-ftr">
+        <button class="btn btn-secondary" onclick="closePaymentModal()"><i class="fas fa-times"></i> إلغاء</button>
+        <button class="btn btn-success" onclick="submitPayment()"><i class="fas fa-check"></i> تأكيد الدفعة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       PURCHASE DETAIL MODAL – عرض تفاصيل الفاتورة
+       ═══════════════════════════════════════════════════ -->
+  <div id="purchaseDetailModal" class="modal-overlay">
+    <div class="modal-box modal-lg">
+      <div class="modal-hdr">
+        <h3><i class="fas fa-file-invoice"></i> تفاصيل فاتورة الشراء</h3>
+        <button class="modal-close-btn" onclick="closePurchaseModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-bdy" id="purchaseDetailBody">
+        <div class="modal-loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          جاري تحميل البيانات...
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="auth-check.js"></script>
   <script>
     let purchases = [];
     let suppliers = [];
     let products = [];
     let purchaseItemsCount = 0;
-    let isFormCollapsed = false;
+    let isFormCollapsed = true;
 
     document.addEventListener('DOMContentLoaded', function() {
       const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
@@ -876,10 +1113,11 @@
       const paidAmount = purchases.reduce((sum, p) => sum + parseFloat(p.paid || 0), 0);
       const remaining = totalAmount - paidAmount;
 
+      const cur = window.systemCurrency || 'ر.س';
       document.getElementById('totalPurchases').textContent = purchases.length;
-      document.getElementById('totalAmount').textContent = totalAmount.toLocaleString() + ' ر.س';
-      document.getElementById('paidAmountStat').textContent = paidAmount.toLocaleString() + ' ر.س';
-      document.getElementById('remainingAmount').textContent = remaining.toLocaleString() + ' ر.س';
+      document.getElementById('totalAmount').textContent = totalAmount.toLocaleString() + ' ' + cur;
+      document.getElementById('paidAmountStat').textContent = paidAmount.toLocaleString() + ' ' + cur;
+      document.getElementById('remainingAmount').textContent = remaining.toLocaleString() + ' ' + cur;
       document.getElementById('purchasesCount').textContent = purchases.length + ' فاتورة';
     }
 
@@ -901,20 +1139,27 @@
         'unpaid': { text: 'غير مدفوع', class: 'payment-unpaid', icon: '❌' }
       };
       
+      const cur = window.systemCurrency || 'ر.س';
       tbody.innerHTML = purchases.map(purchase => {
         const payment = paymentLabels[purchase.payment_status] || paymentLabels['unpaid'];
+        const canPay = parseFloat(purchase.remaining || 0) > 0.005;
         return `
           <tr>
             <td><strong style="color: var(--primary);">#${purchase.id}</strong></td>
             <td>${purchase.supplier_name}</td>
             <td>${purchase.date}</td>
-            <td><strong>${parseFloat(purchase.total).toLocaleString()} ر.س</strong></td>
-            <td style="color: var(--success); font-weight: 600;">${parseFloat(purchase.paid).toLocaleString()} ر.س</td>
-            <td style="color: var(--danger); font-weight: 600;">${parseFloat(purchase.remaining).toLocaleString()} ر.س</td>
+            <td><strong>${parseFloat(purchase.total).toLocaleString()} ${cur}</strong></td>
+            <td style="color: var(--success); font-weight: 600;">${parseFloat(purchase.paid).toLocaleString()} ${cur}</td>
+            <td style="color: var(--danger); font-weight: 600;">${parseFloat(purchase.remaining).toLocaleString()} ${cur}</td>
             <td><span class="badge ${payment.class}">${payment.icon} ${payment.text}</span></td>
             <td>
               <div class="actions">
-                <button class="btn btn-sm btn-success" onclick="addPayment(${purchase.id})" title="إضافة دفعة" ${purchase.payment_status === 'paid' ? 'disabled style="opacity:0.5"' : ''}>
+                <button class="btn btn-sm btn-primary" onclick="viewPurchase(${purchase.id})" title="عرض التفاصيل">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-success" onclick="openPaymentModal(${purchase.id})"
+                  title="${canPay ? 'إضافة دفعة' : 'الفاتورة مسددة بالكامل'}"
+                  ${!canPay ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>
                   <i class="fas fa-money-bill"></i>
                 </button>
                 <button class="btn btn-sm btn-danger" onclick="deletePurchase(${purchase.id})" title="حذف">
@@ -987,20 +1232,27 @@
         return;
       }
 
+      const cur = window.systemCurrency || 'ر.س';
       tbody.innerHTML = filtered.map(purchase => {
         const payment = paymentLabels[purchase.payment_status] || paymentLabels['unpaid'];
+        const canPay = parseFloat(purchase.remaining || 0) > 0.005;
         return `
           <tr>
             <td><strong style="color: var(--primary);">#${purchase.id}</strong></td>
             <td>${purchase.supplier_name}</td>
             <td>${purchase.date}</td>
-            <td><strong>${parseFloat(purchase.total).toLocaleString()} ر.س</strong></td>
-            <td style="color: var(--success); font-weight: 600;">${parseFloat(purchase.paid).toLocaleString()} ر.س</td>
-            <td style="color: var(--danger); font-weight: 600;">${parseFloat(purchase.remaining).toLocaleString()} ر.س</td>
+            <td><strong>${parseFloat(purchase.total).toLocaleString()} ${cur}</strong></td>
+            <td style="color: var(--success); font-weight: 600;">${parseFloat(purchase.paid).toLocaleString()} ${cur}</td>
+            <td style="color: var(--danger); font-weight: 600;">${parseFloat(purchase.remaining).toLocaleString()} ${cur}</td>
             <td><span class="badge ${payment.class}">${payment.icon} ${payment.text}</span></td>
             <td>
               <div class="actions">
-                <button class="btn btn-sm btn-success" onclick="addPayment(${purchase.id})" title="دفعة">
+                <button class="btn btn-sm btn-primary" onclick="viewPurchase(${purchase.id})" title="عرض التفاصيل">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-success" onclick="openPaymentModal(${purchase.id})"
+                  title="${canPay ? 'إضافة دفعة' : 'الفاتورة مسددة بالكامل'}"
+                  ${!canPay ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>
                   <i class="fas fa-money-bill"></i>
                 </button>
                 <button class="btn btn-sm btn-danger" onclick="deletePurchase(${purchase.id})" title="حذف">
@@ -1064,7 +1316,7 @@
             <div class="product-suggestion" onclick="selectProduct(${itemId}, ${p.id}, '${p.name.replace(/'/g, "\\'")}', ${price}, ${price})">
               <strong>${p.name}</strong>
               <small>
-                <i class="fas fa-dollar-sign" style="width: 12px;"></i> السعر: ${price.toFixed(2)} ر.س | 
+                <i class="fas fa-dollar-sign" style="width: 12px;"></i> السعر: ${price.toFixed(2)} ${window.systemCurrency || 'ر.س'} |
                 <i class="fas fa-barcode" style="width: 12px;"></i> ${p.barcode ? p.barcode : 'بدون'}
                 ${stock > 0 ? `<span style="color: var(--success); margin-right: 8px;"> | المخزون: ${stock}</span>` : '<span style="color: var(--danger); margin-right: 8px;"> | المخزون: 0</span>'}
               </small>
@@ -1108,7 +1360,7 @@
           <div class="product-suggestion" onclick="selectProduct(${itemId}, ${p.id}, '${p.name.replace(/'/g, "\\'")}', ${price}, ${price})">
             <strong>${p.name}</strong>
             <small>
-              <i class="fas fa-dollar-sign" style="width: 12px;"></i> السعر: ${price.toFixed(2)} ر.س | 
+              <i class="fas fa-dollar-sign" style="width: 12px;"></i> السعر: ${price.toFixed(2)} ${window.systemCurrency || 'ر.س'} |
               <i class="fas fa-barcode" style="width: 12px;"></i> ${p.barcode ? p.barcode : 'بدون'}
               ${stock > 0 ? `<span style="color: var(--success); margin-right: 8px;"> | المخزون: ${stock}</span>` : '<span style="color: var(--danger); margin-right: 8px;"> | المخزون: 0</span>'}
             </small>
@@ -1156,21 +1408,23 @@
         const itemTotal = qty * price;
         
         const totalCell = document.getElementById(`item-total-${itemId}`);
+        const cur = window.systemCurrency || 'ر.س';
         if (totalCell) {
-          totalCell.textContent = itemTotal.toLocaleString() + ' ر.س';
+          totalCell.textContent = itemTotal.toLocaleString() + ' ' + cur;
         }
-        
+
         subtotal += itemTotal;
       });
-      
+
+      const cur = window.systemCurrency || 'ر.س';
       const discount = parseFloat(document.getElementById('discount').value) || 0;
       const grandTotal = subtotal - discount;
       const paid = parseFloat(document.getElementById('paidAmount').value) || 0;
       const remaining = grandTotal - paid;
-      
-      document.getElementById('subtotal').textContent = subtotal.toLocaleString() + ' ر.س';
-      document.getElementById('grandTotal').textContent = grandTotal.toLocaleString() + ' ر.س';
-      document.getElementById('remainingValue').textContent = remaining.toLocaleString() + ' ر.س';
+
+      document.getElementById('subtotal').textContent = subtotal.toLocaleString() + ' ' + cur;
+      document.getElementById('grandTotal').textContent = grandTotal.toLocaleString() + ' ' + cur;
+      document.getElementById('remainingValue').textContent = remaining.toLocaleString() + ' ' + cur;
     }
 
     function resetForm() {
@@ -1262,21 +1516,243 @@
       }
     }
 
-    function addPayment(id) {
-      const purchase = purchases.find(p => p.id === id);
-      if (!purchase || purchase.payment_status === 'paid') return;
-      
-      const amount = prompt(`💰 أدخل المبلغ المدفوع\n\nالمتبقي: ${purchase.remaining.toLocaleString()} ر.س`);
-      if (amount && parseFloat(amount) > 0) {
-        const paymentAmount = Math.min(parseFloat(amount), purchase.remaining);
-        purchase.paid = parseFloat(purchase.paid) + paymentAmount;
-        purchase.remaining = parseFloat(purchase.total) - parseFloat(purchase.paid);
-        purchase.payment_status = purchase.remaining <= 0 ? 'paid' : 'partial';
-        
-        renderPurchases();
-        updateStats();
-        showToast(`تم إضافة دفعة بمبلغ ${paymentAmount.toLocaleString()} ر.س ✅`, 'success');
+    // ─── Payment Modal ────────────────────────────────────────────
+    let _paymentPurchaseId = null;
+
+    function openPaymentModal(id) {
+      const purchase = purchases.find(p => String(p.id) === String(id));
+      if (!purchase || parseFloat(purchase.remaining || 0) <= 0.005) return;
+
+      _paymentPurchaseId = id;
+      const cur      = window.systemCurrency || 'ر.س';
+      const total    = parseFloat(purchase.total    || 0);
+      const paid     = parseFloat(purchase.paid     || 0);
+      const remaining = parseFloat(purchase.remaining || 0);
+
+      document.getElementById('paySummarySupplier').textContent  = purchase.supplier_name;
+      document.getElementById('paySummaryTotal').textContent      = total.toLocaleString()     + ' ' + cur;
+      document.getElementById('paySummaryPaid').textContent       = paid.toLocaleString()      + ' ' + cur;
+      document.getElementById('paySummaryRemaining').textContent  = remaining.toLocaleString() + ' ' + cur;
+
+      document.getElementById('payAmount').value   = '';
+      document.getElementById('payAmount').max     = remaining;
+      document.getElementById('payAmountHint').textContent = `الحد الأقصى: ${remaining.toLocaleString()} ${cur}`;
+      document.getElementById('payDate').value     = new Date().toISOString().split('T')[0];
+      document.getElementById('payNotes').value    = '';
+      document.getElementById('payMethod').value   = 'cash';
+
+      document.getElementById('paymentModal').classList.add('show');
+      setTimeout(() => document.getElementById('payAmount').focus(), 100);
+    }
+
+    function closePaymentModal() {
+      document.getElementById('paymentModal').classList.remove('show');
+      _paymentPurchaseId = null;
+    }
+
+    async function submitPayment() {
+      const id = _paymentPurchaseId;
+      if (!id) return;
+
+      const purchase  = purchases.find(p => String(p.id) === String(id));
+      if (!purchase) return;
+
+      const amount    = parseFloat(document.getElementById('payAmount').value);
+      const remaining = parseFloat(purchase.remaining || 0);
+      const cur       = window.systemCurrency || 'ر.س';
+
+      if (!amount || amount <= 0) {
+        showToast('يرجى إدخال مبلغ صحيح', 'error'); return;
       }
+      if (amount > remaining + 0.005) {
+        showToast(`المبلغ يتجاوز المتبقي (${remaining.toLocaleString()} ${cur})`, 'error'); return;
+      }
+
+      const body = {
+        supplier_id:    purchase.supplier_id,
+        purchase_id:    purchase.id,
+        amount:         amount,
+        payment_method: document.getElementById('payMethod').value,
+        payment_date:   document.getElementById('payDate').value,
+        notes:          document.getElementById('payNotes').value || ''
+      };
+
+      try {
+        const res    = await fetch('../api.php?action=add_supplier_payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const result = await res.json();
+
+        if (result.success) {
+          closePaymentModal();
+          showToast(`✅ تم تسجيل دفعة بمبلغ ${amount.toLocaleString()} ${cur}`, 'success');
+          loadPurchases();
+        } else {
+          showToast(result.message || 'حدث خطأ في تسجيل الدفعة', 'error');
+        }
+      } catch (err) {
+        showToast('خطأ في الاتصال بالخادم', 'error');
+      }
+    }
+
+    // ─── Purchase Detail Modal (Eye Button) ───────────────────────
+    async function viewPurchase(id) {
+      document.getElementById('purchaseDetailModal').classList.add('show');
+      document.getElementById('purchaseDetailBody').innerHTML = `
+        <div class="modal-loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          جاري تحميل بيانات الفاتورة...
+        </div>`;
+
+      try {
+        const [purchRes, payRes] = await Promise.all([
+          fetch(`../api.php?action=get_purchase&id=${id}`),
+          fetch(`../api.php?action=get_purchase_payments&purchase_id=${id}`)
+        ]);
+        const purchData = await purchRes.json();
+        const payData   = await payRes.json();
+
+        if (!purchData.success) {
+          document.getElementById('purchaseDetailBody').innerHTML =
+            '<p style="color:red;padding:24px;">خطأ في تحميل بيانات الفاتورة</p>';
+          return;
+        }
+
+        const p        = purchData.data;
+        const payments = payData.success ? (payData.data || []) : [];
+        const cur      = window.systemCurrency || 'ر.س';
+
+        const statusMap = {
+          paid:    { text: 'مدفوع',         cls: 'payment-paid'    },
+          partial: { text: 'مدفوع جزئياً', cls: 'payment-partial' },
+          unpaid:  { text: 'غير مدفوع',     cls: 'payment-unpaid'  }
+        };
+        const st = statusMap[p.payment_status] || statusMap.unpaid;
+
+        // Items rows
+        const itemRows = (p.items || []).length === 0
+          ? '<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">لا توجد منتجات</td></tr>'
+          : (p.items || []).map((it, i) => `
+              <tr>
+                <td style="text-align:center;color:#64748b;">${i + 1}</td>
+                <td>
+                  <strong>${it.product_name || '—'}</strong>
+                  ${it.barcode ? `<br><small style="color:#94a3b8;font-size:11px;">${it.barcode}</small>` : ''}
+                </td>
+                <td style="text-align:center;">${it.unit_quantity || it.quantity || 0}</td>
+                <td style="text-align:center;">${parseFloat(it.purchase_price || 0).toLocaleString()} ${cur}</td>
+                <td style="text-align:center;font-weight:600;color:var(--primary);">${parseFloat(it.total_price || 0).toLocaleString()} ${cur}</td>
+                <td style="text-align:center;">${it.expiry_date || '—'}</td>
+              </tr>`).join('');
+
+        // Payment history rows
+        const methodLabel = { cash: 'نقداً', transfer: 'تحويل', check: 'شيك', credit: 'آجل' };
+        const payRows = payments.length === 0
+          ? '<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">لا توجد دفعات مسجلة</td></tr>'
+          : payments.map((pay, i) => `
+              <tr>
+                <td style="text-align:center;color:#64748b;">${i + 1}</td>
+                <td>${pay.payment_date || '—'}</td>
+                <td style="font-weight:700;color:var(--success);">${parseFloat(pay.amount || 0).toLocaleString()} ${cur}</td>
+                <td>${methodLabel[pay.payment_method] || pay.payment_method || '—'}</td>
+                <td>${pay.user_name || 'النظام'}</td>
+                <td style="color:#64748b;">${pay.notes || '—'}</td>
+              </tr>`).join('');
+
+        document.getElementById('purchaseDetailBody').innerHTML = `
+          <!-- Invoice header info -->
+          <div class="detail-header-grid">
+            <div>
+              <div class="lbl">رقم الفاتورة</div>
+              <div class="val" style="color:var(--primary);font-weight:700;">${p.purchase_number || '#' + p.id}</div>
+            </div>
+            <div>
+              <div class="lbl">المورد</div>
+              <div class="val">${p.supplier_name || '—'}</div>
+            </div>
+            <div>
+              <div class="lbl">تاريخ الشراء</div>
+              <div class="val">${p.purchase_date || '—'}</div>
+            </div>
+            <div>
+              <div class="lbl">حالة الدفع</div>
+              <span class="badge ${st.cls}">${st.text}</span>
+            </div>
+          </div>
+
+          <!-- Items -->
+          <div style="margin-bottom:24px;">
+            <div class="detail-section-title">
+              <i class="fas fa-boxes"></i> المنتجات المشتراة
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="hist-table">
+                <thead>
+                  <tr>
+                    <th style="width:40px;">#</th>
+                    <th>المنتج</th>
+                    <th>الكمية</th>
+                    <th>سعر الشراء</th>
+                    <th>الإجمالي</th>
+                    <th>تاريخ الانتهاء</th>
+                  </tr>
+                </thead>
+                <tbody>${itemRows}</tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Payment history -->
+          <div style="margin-bottom:24px;">
+            <div class="detail-section-title">
+              <i class="fas fa-history"></i> سجل المدفوعات (${payments.length} دفعة)
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="hist-table">
+                <thead>
+                  <tr>
+                    <th style="width:40px;">#</th>
+                    <th>التاريخ</th>
+                    <th>المبلغ</th>
+                    <th>الطريقة</th>
+                    <th>بواسطة</th>
+                    <th>ملاحظات</th>
+                  </tr>
+                </thead>
+                <tbody>${payRows}</tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Financial summary -->
+          <div class="detail-totals">
+            <div class="dtotal-box invoice">
+              <div class="lbl">إجمالي الفاتورة</div>
+              <div class="val">${parseFloat(p.total_amount || 0).toLocaleString()} ${cur}</div>
+            </div>
+            <div class="dtotal-box paid">
+              <div class="lbl">إجمالي المدفوع</div>
+              <div class="val">${parseFloat(p.paid_amount || 0).toLocaleString()} ${cur}</div>
+            </div>
+            <div class="dtotal-box remain">
+              <div class="lbl">المتبقي</div>
+              <div class="val">${parseFloat(p.remaining_amount || 0).toLocaleString()} ${cur}</div>
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        document.getElementById('purchaseDetailBody').innerHTML = `
+          <div class="modal-loading" style="color:#ef4444;">
+            <i class="fas fa-exclamation-triangle"></i>
+            خطأ في تحميل البيانات
+          </div>`;
+      }
+    }
+
+    function closePurchaseModal() {
+      document.getElementById('purchaseDetailModal').classList.remove('show');
     }
 
     async function deletePurchase(id) {
@@ -1299,7 +1775,7 @@
         }
       } catch (error) {
         // حذف محلي كبديل
-        purchases = purchases.filter(p => p.id !== id);
+        purchases = purchases.filter(p => String(p.id) !== String(id));
         renderPurchases();
         updateStats();
         showToast('تم حذف الفاتورة بنجاح ✅', 'success');
@@ -1317,20 +1793,21 @@
       setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    // إغلاق النوافذ والقوائم المنسدلة
-    window.onclick = function(event) {
-      if (event.target.classList.contains('modal')) {
-        event.target.classList.remove('show');
-      }
-      // إخفاء قوائم الاقتراحات
+    // Close modals when clicking the dark overlay or pressing Escape
+    window.addEventListener('click', function(event) {
+      // Modal overlays: click outside the inner box closes them
+      if (event.target.id === 'paymentModal')       closePaymentModal();
+      if (event.target.id === 'purchaseDetailModal') closePurchaseModal();
+      // Hide product suggestion dropdowns
       if (!event.target.closest('.product-search')) {
         document.querySelectorAll('.product-suggestions').forEach(el => el.classList.remove('show'));
       }
-    };
+    });
 
-    // إغلاق قائمة الاقتراحات عند الضغط على Escape
     document.addEventListener('keydown', function(event) {
       if (event.key === 'Escape') {
+        closePaymentModal();
+        closePurchaseModal();
         document.querySelectorAll('.product-suggestions').forEach(el => el.classList.remove('show'));
       }
     });
