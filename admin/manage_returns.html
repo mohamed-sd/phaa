@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>المرتجعات والتقارير المالية - صيدليات الحياة</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-styles.css">
+  <style>
+    .rep-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+    .rep-tab { background:#fff; border:2px solid #e2e8f0; border-radius:10px; padding:10px 16px; cursor:pointer; font-weight:600; font-size:14px; color:#475569; }
+    .rep-tab.active { border-color:var(--primary); color:var(--primary); background:#f0fdfa; }
+    .filters { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:18px; }
+    .filters .form-group { margin:0; }
+    .summary-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:18px; }
+    .sc { background:#fff; border-radius:14px; padding:18px; box-shadow:0 2px 12px rgba(0,0,0,.06); border-top:4px solid var(--primary); }
+    .sc .v { font-size:22px; font-weight:800; color:#0f172a; }
+    .sc .l { font-size:13px; color:#64748b; margin-top:4px; }
+    .sc.green { border-top-color:#10b981; } .sc.red { border-top-color:#ef4444; } .sc.purple { border-top-color:#8b5cf6; }
+    .pos-status{padding:3px 10px;border-radius:10px;font-size:12px;font-weight:600;}
+    .pos-status.paid{background:#d1fae5;color:#059669;} .pos-status.partial{background:#fef3c7;color:#d97706;}
+    .pos-status.unpaid{background:#fee2e2;color:#dc2626;} .pos-status.returned{background:#e5e7eb;color:#4b5563;}
+    .pos-status.partially_returned{background:#ede9fe;color:#7c3aed;}
+  </style>
+</head>
+<body>
+  <script src="./sidebar.js"></script>
+  <main>
+    <div class="topbar">
+      <h1><i class="fas fa-rotate-left"></i> المرتجعات والتقارير المالية</h1>
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-name" id="userDisplay">مرحباً</div>
+      </div>
+    </div>
+
+    <div class="rep-tabs" id="repTabs">
+      <button class="rep-tab active" data-rep="returns">الفواتير المرتجعة</button>
+      <button class="rep-tab" data-rep="returned_products">المنتجات المرتجعة</button>
+      <button class="rep-tab" data-rep="return_stats">إحصائيات المرتجعات</button>
+      <button class="rep-tab" data-rep="outstanding">الفواتير الآجلة</button>
+      <button class="rep-tab" data-rep="balances">أرصدة العملاء</button>
+      <button class="rep-tab" data-rep="insurance" id="tabInsurance" style="display:none">مطالبات التأمين</button>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="filters">
+          <div class="form-group" id="fromWrap"><label class="form-label">من تاريخ</label><input type="date" id="fromDate" class="form-control"></div>
+          <div class="form-group" id="toWrap"><label class="form-label">إلى تاريخ</label><input type="date" id="toDate" class="form-control"></div>
+          <div class="form-group" id="companyWrap" style="display:none"><label class="form-label">شركة التأمين</label><select id="companySel" class="form-control"></select></div>
+          <button class="btn btn-primary" id="refreshBtn"><i class="fas fa-sync"></i> تحديث</button>
+          <button class="btn btn-secondary" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+        </div>
+        <div class="summary-cards" id="summary"></div>
+        <div class="table-responsive"><div id="tableHost"></div></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./auth-check.js"></script>
+  <script>
+    const apiBase = '../api.php';
+    let currency = 'ج.م';
+    let currentRep = 'returns';
+
+    async function checkAuthAndRedirect() {
+      try {
+        const res = await fetch('../api.php?action=check_session', { credentials: 'include' });
+        const json = await res.json();
+        if (!json.success) { window.location.href = '../login.php'; return false; }
+        const user = json.data;
+        if (user.role !== 'admin' && user.role !== 'manager') { window.location.href = '../index.html'; return false; }
+        document.getElementById('userAvatar').textContent = user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2);
+        document.getElementById('userDisplay').textContent = user.full_name;
+        return true;
+      } catch (err) { window.location.href = '../login.php'; return false; }
+    }
+
+    async function callAPI(action) {
+      const res = await fetch(`${apiBase}?action=${action}`, { credentials: 'include' });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'خطأ');
+      return json.data;
+    }
+    function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+    function money(n){return (parseFloat(n)||0).toFixed(2)+' '+currency;}
+    function fmtDate(d){return d?new Date(d).toLocaleString('ar-EG'):'';}
+    function card(v,l,cls){return `<div class="sc ${cls||''}"><div class="v">${v}</div><div class="l">${l}</div></div>`;}
+
+    window.addEventListener('load', async () => {
+      if (!(await checkAuthAndRedirect())) return;
+      const today = new Date(); const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      document.getElementById('fromDate').value = first.toISOString().split('T')[0];
+      document.getElementById('toDate').value = today.toISOString().split('T')[0];
+      try { const s = await callAPI('get_settings'); if (s.currency_symbol) currency = s.currency_symbol;
+        if (s.uses_health_insurance === '1') { document.getElementById('tabInsurance').style.display = ''; await loadCompanies(); }
+      } catch (e) {}
+      load();
+    });
+
+    async function loadCompanies() {
+      try {
+        const list = await callAPI('get_insurance_companies');
+        document.getElementById('companySel').innerHTML = '<option value="0">كل الشركات</option>' +
+          list.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+      } catch (e) {}
+    }
+
+    document.getElementById('repTabs').addEventListener('click', e => {
+      const t = e.target.closest('.rep-tab'); if (!t) return;
+      document.querySelectorAll('.rep-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      currentRep = t.getAttribute('data-rep');
+      const dateRep = ['returns','returned_products','return_stats','insurance'].includes(currentRep);
+      document.getElementById('fromWrap').style.display = dateRep ? '' : 'none';
+      document.getElementById('toWrap').style.display = dateRep ? '' : 'none';
+      document.getElementById('companyWrap').style.display = currentRep === 'insurance' ? '' : 'none';
+      load();
+    });
+    document.getElementById('refreshBtn').addEventListener('click', load);
+
+    function dateQuery() {
+      return `&from=${document.getElementById('fromDate').value}&to=${document.getElementById('toDate').value}`;
+    }
+
+    async function load() {
+      const summary = document.getElementById('summary');
+      const host = document.getElementById('tableHost');
+      summary.innerHTML = ''; host.innerHTML = 'جاري التحميل...';
+      try {
+        if (currentRep === 'returns') {
+          const d = await callAPI('get_returns_report' + dateQuery());
+          summary.innerHTML = card(d.totals.count, 'عدد المرتجعات') + card(money(d.totals.total_refund), 'إجمالي المبالغ المرتجعة', 'red');
+          host.innerHTML = table(['رقم المرتجع','الفاتورة','النوع','العميل','المبلغ','المستخدم','التاريخ'],
+            d.returns.map(r => [esc(r.return_number), esc(r.invoice_number), r.return_type==='full'?'كامل':'جزئي',
+              esc(r.customer_name||'نقدي'), money(r.total_refund), esc(r.user_name||''), fmtDate(r.created_at)]));
+        } else if (currentRep === 'returned_products') {
+          const rows = await callAPI('get_returned_products_report' + dateQuery());
+          host.innerHTML = table(['المنتج','عدد مرات الإرجاع','الكمية (وحدات)','إجمالي المبلغ'],
+            rows.map(r => [esc(r.product_name), r.times_returned, r.total_units, money(r.total_refund)]));
+        } else if (currentRep === 'return_stats') {
+          const s = await callAPI('get_return_stats' + dateQuery());
+          const ratio = parseFloat(s.net_sales) > 0 ? ((parseFloat(s.total_refund)/parseFloat(s.net_sales))*100).toFixed(1)+'%' : '0%';
+          summary.innerHTML = card(s.total_returns,'إجمالي المرتجعات') + card(s.full_returns,'مرتجعات كاملة','purple') +
+            card(s.partial_returns,'مرتجعات جزئية','purple') + card(money(s.total_refund),'إجمالي المبالغ','red') +
+            card(ratio,'نسبة المرتجعات للمبيعات','orange');
+          host.innerHTML = '';
+        } else if (currentRep === 'outstanding') {
+          const d = await callAPI('get_outstanding_invoices');
+          summary.innerHTML = card(d.totals.count,'عدد الفواتير') + card(money(d.totals.total_outstanding),'إجمالي المتبقي','red');
+          host.innerHTML = table(['الفاتورة','العميل','الهاتف','الإجمالي','المدفوع','المتبقي','الحالة','التاريخ'],
+            d.invoices.map(i => [esc(i.invoice_number), esc(i.customer_db_name||i.customer_name||'نقدي'), esc(i.customer_phone||''),
+              money(i.total_amount), money(i.paid_amount), money(i.remaining_amount),
+              `<span class="pos-status ${i.status}">${i.status==='partial'?'مدفوعة جزئياً':'غير مدفوعة'}</span>`, fmtDate(i.created_at)]));
+        } else if (currentRep === 'balances') {
+          const rows = await callAPI('get_customer_balances');
+          const total = rows.reduce((a,r)=>a+parseFloat(r.outstanding||0),0);
+          summary.innerHTML = card(rows.length,'عملاء لديهم مستحقات') + card(money(total),'إجمالي المستحقات','red');
+          host.innerHTML = table(['العميل','الهاتف','فواتير مفتوحة','الرصيد المستحق'],
+            rows.map(r => [esc(r.name), esc(r.phone||''), r.open_invoices, money(r.outstanding)]));
+        } else if (currentRep === 'insurance') {
+          const cid = document.getElementById('companySel').value || 0;
+          const d = await callAPI('get_insurance_claims_report&company_id=' + cid + dateQuery());
+          summary.innerHTML = card(d.totals.count,'عدد الفواتير') + card(money(d.totals.total_sales),'إجمالي المبيعات') +
+            card(money(d.totals.total_discount),'إجمالي الخصومات','purple') + card(money(d.totals.total_claims),'المطالبات المستحقة','red');
+          host.innerHTML = table(['الفاتورة','الشركة','النسبة','العميل','المبلغ الأصلي','الخصم','المستحق على التأمين','التاريخ'],
+            d.claims.map(c => [esc(c.invoice_number), esc(c.company_name), (parseFloat(c.discount_percentage)).toFixed(0)+'%',
+              esc(c.customer||'نقدي'), money(c.total_amount), money(c.insurance_discount), money(c.insurance_due), fmtDate(c.created_at)]));
+        }
+      } catch (err) { host.innerHTML = `<p style="color:#dc2626">${esc(err.message)}</p>`; }
+    }
+
+    function table(headers, rows) {
+      if (!rows.length) return '<p style="text-align:center;color:#94a3b8;padding:24px">لا توجد بيانات</p>';
+      return `<table class="table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    }
+  </script>
+</body>
+</html>

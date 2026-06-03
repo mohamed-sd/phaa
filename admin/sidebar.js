@@ -14,12 +14,31 @@ async function loadSystemSettings() {
     const res = await fetch('../api.php?action=get_settings');
     const json = await res.json();
     if (json.success && json.data) {
+      const prevInsurance = window.systemSettings.uses_health_insurance;
       window.systemSettings = json.data;
       window.systemCurrency = json.data.currency_symbol || 'ر.س';
+      // إعادة بناء القائمة إذا تغيّرت حالة التأمين (لإظهار/إخفاء رابط شركات التأمين)
+      if (prevInsurance !== json.data.uses_health_insurance) {
+        rerenderSidebarMenu();
+      }
     }
   } catch (e) {
     console.warn('Could not load system settings:', e);
   }
+}
+
+/**
+ * إعادة بناء روابط القائمة فقط (مع الحفاظ على بقية الشريط) بعد تحميل الإعدادات.
+ */
+function rerenderSidebarMenu() {
+  const existing = document.querySelector('.sidebar');
+  if (!existing) return;
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = createSidebar();
+  const fresh = wrapper.firstElementChild;
+  existing.replaceWith(fresh);
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 }
 
 // ============================================================
@@ -151,10 +170,15 @@ const sidebarMenuItems = [
   { href: 'manage_products.html', icon: 'fas fa-pills',        text: 'المنتجات'        },
   { href: 'manage_categories.html', icon: 'fas fa-list',       text: 'الفئات'          },
   { href: 'manage_invoices.html', icon: 'fas fa-receipt',      text: 'الفواتير'        },
+  { href: 'manage_returns.html',  icon: 'fas fa-rotate-left',  text: 'المرتجعات'       },
   { type: 'divider' },
+  { href: 'manage_customers.html', icon: 'fas fa-user-group',  text: 'العملاء'         },
   { href: 'manage_suppliers.html',  icon: 'fas fa-truck',      text: 'الموردين'        },
   { href: 'manage_purchases.html',  icon: 'fas fa-shopping-cart', text: 'المشتريات'   },
+  // يظهر فقط عند تفعيل التأمين الصحي في الإعدادات
+  { href: 'manage_insurance.html', icon: 'fas fa-shield-heart', text: 'شركات التأمين', requiresInsurance: true },
   { type: 'divider' },
+  { href: 'manage_payment_methods.html', icon: 'fas fa-credit-card', text: 'طرق الدفع' },
   { href: 'manage_reports.html',  icon: 'fas fa-chart-bar',    text: 'التقارير'        },
   { href: 'manage_users.html',    icon: 'fas fa-users',        text: 'المستخدمين'      },
   { href: 'settings.html',        icon: 'fas fa-cog',          text: 'الإعدادات'       }
@@ -172,11 +196,14 @@ const sidebarStyles = `
     padding: 0;
     position: fixed;
     height: 100vh;
-    overflow-y: auto;
     right: 0;
     top: 0;
     z-index: 1000;
     box-shadow: -5px 0 25px rgba(8,145,178,0.3);
+    /* تخطيط عمودي مرن: الرأس والقائمة قابلة للتمرير وزر الخروج ثابت أسفل الشريط */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .sidebar-header {
@@ -184,6 +211,7 @@ const sidebarStyles = `
     background: rgba(255,255,255,0.1);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
   }
 
   .sidebar-logo {
@@ -331,7 +359,9 @@ const sidebarStyles = `
   .notif-scroll-body { max-height: 360px; overflow-y: auto; }
 
   /* ── Nav Menu ── */
-  .nav-menu { list-style: none; margin: 0; padding: 16px 12px; }
+  /* flex:1 + overflow يجعل القائمة وحدها قابلة للتمرير عند كثرة الروابط
+     مع بقاء زر الخروج ظاهراً دائماً في الأسفل */
+  .nav-menu { list-style: none; margin: 0; padding: 16px 12px; flex: 1 1 auto; overflow-y: auto; }
   .nav-menu li { margin: 4px 0; }
 
   .nav-menu a {
@@ -369,7 +399,8 @@ const sidebarStyles = `
 
   /* ── Logout ── */
   .logout-section {
-    position: absolute; bottom: 0; width: 100%;
+    flex-shrink: 0;
+    width: 100%;
     padding: 16px;
     background: rgba(0,0,0,0.1);
     border-top: 1px solid rgba(255,255,255,0.1);
@@ -400,9 +431,11 @@ const sidebarStyles = `
   }
 
   @media (max-width: 768px) {
-    .sidebar { width: 100%; height: auto; position: relative; }
+    .sidebar { width: 100%; height: auto; position: relative; overflow: visible; }
     main, .main-content { margin-right: 0 !important; width: 100% !important; }
-    .logout-section { position: relative; bottom: auto; margin-top: 20px; }
+    /* على الجوال يتدفق المحتوى طبيعياً ولا حاجة لتمرير داخلي للقائمة */
+    .nav-menu { overflow-y: visible; }
+    .logout-section { margin-top: 20px; }
     .topbar-bell-panel { left: auto; right: 0; }
   }
 `;
@@ -413,8 +446,12 @@ const sidebarStyles = `
 function createSidebar() {
   const currentPage = window.location.pathname.split('/').pop() || 'dashboard.html';
 
+  const insuranceOn = window.systemSettings && window.systemSettings.uses_health_insurance === '1';
+
   let menuHTML = '';
   sidebarMenuItems.forEach(item => {
+    // إخفاء الروابط الخاصة بالتأمين عند تعطيله في الإعدادات
+    if (item.requiresInsurance && !insuranceOn) return;
     if (item.type === 'divider') {
       menuHTML += '<div class="nav-divider"></div>';
     } else {

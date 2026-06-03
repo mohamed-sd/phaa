@@ -294,6 +294,115 @@ try {
     get_purchase_payments();
   }
 
+  // ============================================
+  // PAYMENT METHODS ENDPOINTS (طرق الدفع) - Feature 5
+  // ============================================
+
+  elseif ($request === 'get_payment_methods') {
+    get_payment_methods();
+  }
+  elseif ($request === 'add_payment_method' && $method === 'POST') {
+    add_payment_method();
+  }
+  elseif ($request === 'update_payment_method' && $method === 'POST') {
+    update_payment_method();
+  }
+  elseif ($request === 'toggle_payment_method' && $method === 'POST') {
+    toggle_payment_method();
+  }
+  elseif ($request === 'delete_payment_method' && $method === 'POST') {
+    delete_payment_method();
+  }
+
+  // ============================================
+  // CUSTOMERS ENDPOINTS (العملاء) - Feature 4
+  // ============================================
+
+  elseif ($request === 'get_customers') {
+    get_customers();
+  }
+  elseif ($request === 'get_customer') {
+    get_customer();
+  }
+  elseif ($request === 'add_customer' && $method === 'POST') {
+    add_customer();
+  }
+  elseif ($request === 'update_customer' && $method === 'POST') {
+    update_customer();
+  }
+  elseif ($request === 'toggle_customer_status' && $method === 'POST') {
+    toggle_customer_status();
+  }
+  elseif ($request === 'get_customer_balances') {
+    get_customer_balances();
+  }
+
+  // ============================================
+  // PARTIAL PAYMENTS ENDPOINTS (الدفع الجزئي) - Feature 4
+  // ============================================
+
+  elseif ($request === 'add_invoice_payment' && $method === 'POST') {
+    add_invoice_payment();
+  }
+  elseif ($request === 'get_invoice_payments') {
+    get_invoice_payments();
+  }
+  elseif ($request === 'get_outstanding_invoices') {
+    get_outstanding_invoices();
+  }
+  elseif ($request === 'get_cashier_invoices') {
+    get_cashier_invoices();
+  }
+
+  // ============================================
+  // INVOICE RETURNS ENDPOINTS (مرتجعات الفواتير) - Feature 1
+  // ============================================
+
+  elseif ($request === 'search_invoice_for_return') {
+    search_invoice_for_return();
+  }
+  elseif ($request === 'return_invoice_item' && $method === 'POST') {
+    return_invoice_item();
+  }
+  elseif ($request === 'return_full_invoice' && $method === 'POST') {
+    return_full_invoice();
+  }
+  elseif ($request === 'get_returns_report') {
+    get_returns_report();
+  }
+  elseif ($request === 'get_returned_products_report') {
+    get_returned_products_report();
+  }
+  elseif ($request === 'get_return_stats') {
+    get_return_stats();
+  }
+
+  // ============================================
+  // INSURANCE ENDPOINTS (التأمين الصحي) - Feature 2
+  // ============================================
+
+  elseif ($request === 'get_insurance_companies') {
+    get_insurance_companies();
+  }
+  elseif ($request === 'get_insurance_company') {
+    get_insurance_company();
+  }
+  elseif ($request === 'add_insurance_company' && $method === 'POST') {
+    add_insurance_company();
+  }
+  elseif ($request === 'update_insurance_company' && $method === 'POST') {
+    update_insurance_company();
+  }
+  elseif ($request === 'toggle_insurance_company' && $method === 'POST') {
+    toggle_insurance_company();
+  }
+  elseif ($request === 'delete_insurance_company' && $method === 'POST') {
+    delete_insurance_company();
+  }
+  elseif ($request === 'get_insurance_claims_report') {
+    get_insurance_claims_report();
+  }
+
   else {
     json_response(false, 'طلب غير صحيح');
   }
@@ -608,30 +717,220 @@ function delete_product() {
 // INVOICES FUNCTIONS
 // ============================================
 
+/**
+ * إنشاء فاتورة بيع كاملة بشكل ذرّي (atomic) داخل معاملة قاعدة بيانات.
+ * يدعم: العملاء، الخصم اليدوي، طرق الدفع الديناميكية، التأمين الصحي، والدفع الجزئي.
+ *
+ * المدخلات المتوقعة (JSON):
+ *  - items: [{ product_id, unit, unit_quantity, base_quantity, unit_price }]  (مطلوب)
+ *  - branch_id, customer_id, customer_name
+ *  - tax_amount, discount_amount
+ *  - payment_method_id
+ *  - insurance_company_id (اختياري)
+ *  - paid_amount (للدفع الجزئي؛ الافتراضي = كامل المبلغ المستحق على العميل)
+ */
 function create_invoice() {
   global $conn;
   $data = json_decode(file_get_contents('php://input'), true);
-  
-  // Generate Invoice Number
-  $invoice_number = 'INV-' . date('YmdHis') . '-' . mt_rand(1000, 9999);
-  $branch_id = intval($data['branch_id'] ?? 1);
-  $cashier_id = intval($data['cashier_id'] ?? 1);
-  $subtotal = floatval($data['subtotal'] ?? 0);
-  $tax_amount = floatval($data['tax_amount'] ?? 0);
-  $payment_method = escape_string($data['payment_method'] ?? 'cash');
-  
-  $total_amount = $subtotal + $tax_amount;
-  
-  $query = "INSERT INTO invoices (invoice_number, branch_id, cashier_id, subtotal, tax_amount, total_amount, payment_method)
-            VALUES ('$invoice_number', $branch_id, $cashier_id, $subtotal, $tax_amount, $total_amount, '$payment_method')";
-  
-  execute_query($query);
-  $invoice_id = $conn->insert_id;
-  
-  json_response(true, 'تم إنشاء الفاتورة', [
-    'invoice_id' => $invoice_id,
-    'invoice_number' => $invoice_number
-  ]);
+
+  $items = isset($data['items']) && is_array($data['items']) ? $data['items'] : [];
+  if (count($items) === 0) {
+    // تسجيل تشخيصي: ما الذي وصل فعلاً عند فشل التحقق؟ (لتحديد السبب لاحقاً)
+    $received = is_array($data) ? implode(',', array_keys($data)) : gettype($data);
+    log_error('create_invoice rejected: empty items. payload keys=[' . $received . ']');
+    json_response(false, 'لا يمكن إنشاء فاتورة بدون منتجات — لم تصل أي أصناف إلى الخادم. حدّث الصفحة (Ctrl+F5) وأعد المحاولة.');
+  }
+
+  $branch_id    = intval($data['branch_id'] ?? 1);
+  // المستخدم الفعلي من الجلسة (مع التراجع إلى المدخل أو 1 توافقاً مع النظام الحالي)
+  $cashier_id   = current_user_id() ?? intval($data['cashier_id'] ?? 1);
+  $customer_id  = !empty($data['customer_id']) ? intval($data['customer_id']) : null;
+  $customer_name = isset($data['customer_name']) ? trim($data['customer_name']) : '';
+  $tax_amount      = round(floatval($data['tax_amount'] ?? 0), 2);
+  $discount_amount = round(floatval($data['discount_amount'] ?? 0), 2);
+  $payment_method_id = !empty($data['payment_method_id']) ? intval($data['payment_method_id']) : null;
+  $insurance_company_id = !empty($data['insurance_company_id']) ? intval($data['insurance_company_id']) : null;
+
+  // التحقق من طريقة الدفع وجلب اسمها (لقطة تاريخية)
+  $payment_method_name = 'نقداً';
+  if ($payment_method_id) {
+    $pm = get_row("SELECT id, name FROM payment_methods WHERE id = $payment_method_id AND is_active = 1");
+    if (!$pm) {
+      json_response(false, 'طريقة الدفع غير صالحة');
+    }
+    $payment_method_name = $pm['name'];
+  } else {
+    // التراجع إلى طريقة النظام الافتراضية (نقداً)
+    $pm = get_row("SELECT id, name FROM payment_methods WHERE is_system = 1 AND is_active = 1 ORDER BY sort_order LIMIT 1");
+    if ($pm) {
+      $payment_method_id = intval($pm['id']);
+      $payment_method_name = $pm['name'];
+    }
+  }
+
+  // التأمين الصحي
+  $insurance_pct = 0;
+  if ($insurance_company_id) {
+    if (!insurance_enabled()) {
+      json_response(false, 'نظام التأمين الصحي غير مُفعّل');
+    }
+    $ins = get_row("SELECT id, discount_percentage FROM insurance_companies WHERE id = $insurance_company_id AND is_active = 1");
+    if (!$ins) {
+      json_response(false, 'شركة التأمين غير صالحة');
+    }
+    $insurance_pct = floatval($ins['discount_percentage']);
+  }
+
+  try {
+    $result = db_transaction(function($conn) use (
+      $items, $branch_id, $cashier_id, $customer_id, $customer_name,
+      $tax_amount, $discount_amount, $payment_method_id, $payment_method_name,
+      $insurance_company_id, $insurance_pct, $data
+    ) {
+      // 1) التحقق من المنتجات والمخزون + حساب المجموع الفرعي من جانب الخادم
+      $subtotal = 0;
+      $clean_items = [];
+      foreach ($items as $it) {
+        $product_id    = intval($it['product_id'] ?? 0);
+        $unit          = in_array(($it['unit'] ?? 'strip'), ['strip','box','carton']) ? $it['unit'] : 'strip';
+        $unit_quantity = intval($it['unit_quantity'] ?? 0);
+        $base_quantity = intval($it['base_quantity'] ?? 0);
+        $unit_price    = round(floatval($it['unit_price'] ?? 0), 2);
+
+        if ($product_id <= 0 || $unit_quantity <= 0 || $base_quantity <= 0) {
+          throw new Exception('بيانات منتج غير صحيحة في الفاتورة');
+        }
+
+        $product = get_row("SELECT id, name, COALESCE(stock_strips, stock) AS available FROM products WHERE id = $product_id");
+        if (!$product) {
+          throw new Exception('منتج غير موجود (#' . $product_id . ')');
+        }
+        if (intval($product['available']) < $base_quantity) {
+          throw new Exception('الكمية المطلوبة من "' . $product['name'] . '" تتجاوز المخزون المتاح');
+        }
+
+        $line_total = round($unit_price * $unit_quantity, 2);
+        $subtotal += $line_total;
+        $clean_items[] = compact('product_id', 'unit', 'unit_quantity', 'base_quantity', 'unit_price', 'line_total');
+      }
+      $subtotal = round($subtotal, 2);
+
+      // 2) حساب الإجماليات والتأمين
+      $total_amount = round($subtotal + $tax_amount - $discount_amount, 2);
+      if ($total_amount < 0) $total_amount = 0;
+
+      $insurance_due = $insurance_company_id ? round($total_amount * $insurance_pct / 100, 2) : 0;
+      $insurance_discount = $insurance_due;
+      $customer_payable = round($total_amount - $insurance_due, 2);
+
+      // 3) الدفع الجزئي: المبلغ المدفوع من العميل
+      $paid_amount = isset($data['paid_amount']) ? round(floatval($data['paid_amount']), 2) : $customer_payable;
+      if ($paid_amount < 0) $paid_amount = 0;
+      if ($paid_amount > $customer_payable) $paid_amount = $customer_payable;
+      $remaining = round($customer_payable - $paid_amount, 2);
+
+      if ($remaining > 0.001) {
+        $status = ($paid_amount > 0.001) ? 'partial' : 'unpaid';
+      } else {
+        $status = 'paid';
+      }
+
+      // 4) إدراج رأس الفاتورة
+      $invoice_number = 'INV-' . date('YmdHis') . '-' . mt_rand(1000, 9999);
+      $inv_num_esc = $conn->real_escape_string($invoice_number);
+      $cust_name_esc = $conn->real_escape_string($customer_name);
+      $pm_id_sql  = $payment_method_id ? intval($payment_method_id) : 'NULL';
+      $cust_id_sql = $customer_id ? intval($customer_id) : 'NULL';
+      $ins_id_sql  = $insurance_company_id ? intval($insurance_company_id) : 'NULL';
+      $pm_name_esc = $conn->real_escape_string($payment_method_name);
+
+      tx_query("INSERT INTO invoices
+                 (invoice_number, branch_id, cashier_id, customer_id, customer_name,
+                  subtotal, tax_amount, discount_amount, total_amount,
+                  payment_method, payment_method_id, status, paid_amount, remaining_amount,
+                  insurance_company_id, insurance_discount, insurance_due)
+                VALUES
+                 ('$inv_num_esc', $branch_id, $cashier_id, $cust_id_sql, " .
+                  ($customer_name !== '' ? "'$cust_name_esc'" : 'NULL') . ",
+                  $subtotal, $tax_amount, $discount_amount, $total_amount,
+                  '$pm_name_esc', $pm_id_sql, '$status', $paid_amount, $remaining,
+                  $ins_id_sql, $insurance_discount, $insurance_due)");
+      $invoice_id = $conn->insert_id;
+
+      // 5) إدراج العناصر + خصم المخزون + سجل المبيعات + سجل المخزون
+      foreach ($clean_items as $ci) {
+        $pid = $ci['product_id'];
+        $unit = $conn->real_escape_string($ci['unit']);
+        $uq = $ci['unit_quantity'];
+        $bq = $ci['base_quantity'];
+        $up = $ci['unit_price'];
+        $lt = $ci['line_total'];
+
+        tx_query("INSERT INTO invoice_items
+                   (invoice_id, product_id, quantity, unit, unit_quantity, base_quantity, unit_price, total_price)
+                  VALUES ($invoice_id, $pid, $bq, '$unit', $uq, $bq, $up, $lt)");
+
+        tx_query("UPDATE products
+                     SET stock = stock - $bq,
+                         stock_strips = IFNULL(stock_strips, stock) - $bq
+                   WHERE id = $pid");
+
+        tx_query("INSERT INTO sales
+                   (invoice_id, product_id, quantity, unit, unit_quantity, base_quantity, amount, sales_date)
+                  VALUES ($invoice_id, $pid, $bq, '$unit', $uq, $bq, $lt, CURDATE())");
+
+        tx_query("INSERT INTO stock_history (product_id, quantity_change, operation_type, notes)
+                  VALUES ($pid, -$bq, 'sale', 'بيع - فاتورة $inv_num_esc')");
+      }
+
+      // 6) تسجيل الدفعة الأولى (إن وُجدت)
+      if ($paid_amount > 0.001) {
+        $uid_sql = $cashier_id ? intval($cashier_id) : 'NULL';
+        tx_query("INSERT INTO invoice_payments
+                   (invoice_id, amount, payment_method_id, payment_method_name, user_id, notes)
+                  VALUES ($invoice_id, $paid_amount, $pm_id_sql, '$pm_name_esc', $uid_sql, 'دفعة عند إنشاء الفاتورة')");
+      }
+
+      // 7) رصيد العميل (للمبلغ المتبقي)
+      if ($customer_id && $remaining > 0.001) {
+        tx_query("UPDATE customers SET balance = balance + $remaining WHERE id = $customer_id");
+      }
+
+      return [
+        'invoice_id' => $invoice_id,
+        'invoice_number' => $invoice_number,
+        'subtotal' => $subtotal,
+        'total_amount' => $total_amount,
+        'insurance_due' => $insurance_due,
+        'customer_payable' => $customer_payable,
+        'paid_amount' => $paid_amount,
+        'remaining_amount' => $remaining,
+        'status' => $status
+      ];
+    });
+
+    audit_log('create_invoice', 'invoice', $result['invoice_id'], [
+      'invoice_number' => $result['invoice_number'],
+      'total_amount' => $result['total_amount'],
+      'paid_amount' => $result['paid_amount'],
+      'remaining' => $result['remaining_amount'],
+      'status' => $result['status'],
+      'insurance_due' => $result['insurance_due']
+    ]);
+
+    json_response(true, 'تم إنشاء الفاتورة', $result);
+
+  } catch (Exception $e) {
+    json_response(false, $e->getMessage());
+  }
+}
+
+/**
+ * هل نظام التأمين الصحي مُفعّل في الإعدادات؟
+ */
+function insurance_enabled() {
+  $row = get_row("SELECT setting_value FROM pharmacy_settings WHERE setting_key = 'uses_health_insurance'");
+  return $row && $row['setting_value'] === '1';
 }
 
 function add_invoice_item() {
@@ -684,21 +983,77 @@ function get_invoice() {
     json_response(false, 'معرّف الفاتورة غير صحيح');
   }
   
-  $query = "SELECT * FROM invoices WHERE id = $id";
+  // إضافة أسماء الكاشير والعميل والتأمين (إضافي وآمن — لا يغيّر منطق الإنشاء)
+  $query = "SELECT i.*,
+                   u.full_name AS cashier_name,
+                   c.name      AS customer_db_name,
+                   ic.name     AS insurance_name
+            FROM invoices i
+            LEFT JOIN users u ON i.cashier_id = u.id
+            LEFT JOIN customers c ON i.customer_id = c.id
+            LEFT JOIN insurance_companies ic ON i.insurance_company_id = ic.id
+            WHERE i.id = $id";
   $invoice = get_row($query);
-  
+
   if (!$invoice) {
     json_response(false, 'الفاتورة غير موجودة');
   }
-  
+
   // Get Invoice Items
   $query = "SELECT ii.*, p.name as product_name FROM invoice_items ii
             JOIN products p ON ii.product_id = p.id
             WHERE ii.invoice_id = $id";
   $items = get_all($query);
-  
+
   $invoice['items'] = $items;
   json_response(true, 'تم جلب الفاتورة', $invoice);
+}
+
+/**
+ * فواتير اليوم للكاشير الحالي (ميزة سجل فواتير الكاشير).
+ * - الكاشير يرى فواتيره فقط لليوم الحالي.
+ * - المدير/الأدمن يرى كل فواتير اليوم.
+ * يدعم البحث برقم الفاتورة والترقيم (pagination).
+ */
+function get_cashier_invoices() {
+  $uid = current_user_id();
+  if (!$uid) {
+    json_response(false, 'يجب تسجيل الدخول');
+  }
+  $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'cashier';
+  $date = isset($_GET['date']) ? escape_string($_GET['date']) : date('Y-m-d');
+  $search = isset($_GET['search']) ? escape_string(trim($_GET['search'])) : '';
+  $limit = isset($_GET['limit']) ? max(1, min(100, intval($_GET['limit']))) : 20;
+  $offset = isset($_GET['offset']) ? max(0, intval($_GET['offset'])) : 0;
+
+  $where = "WHERE DATE(i.created_at) = '$date'";
+  // قاعدة الأمان: الكاشير يرى فواتيره فقط؛ المدير/الأدمن يرى الكل
+  if ($role !== 'admin' && $role !== 'manager') {
+    $where .= " AND i.cashier_id = " . intval($uid);
+  }
+  if ($search !== '') {
+    $where .= " AND i.invoice_number LIKE '%$search%'";
+  }
+
+  $rows = get_all("SELECT i.id, i.invoice_number, i.created_at, i.customer_name,
+                          c.name AS customer_db_name, i.total_amount, i.payment_method,
+                          i.status, u.full_name AS cashier_name
+                   FROM invoices i
+                   LEFT JOIN customers c ON i.customer_id = c.id
+                   LEFT JOIN users u ON i.cashier_id = u.id
+                   $where
+                   ORDER BY i.created_at DESC, i.id DESC
+                   LIMIT $limit OFFSET $offset");
+
+  $count = get_row("SELECT COUNT(*) AS total FROM invoices i $where");
+
+  json_response(true, 'تم جلب فواتير اليوم', [
+    'invoices' => $rows,
+    'total' => intval($count['total']),
+    'limit' => $limit,
+    'offset' => $offset,
+    'role' => $role
+  ]);
 }
 
 function get_invoices() {
@@ -1870,6 +2225,708 @@ function get_purchase_payments() {
 
   $result = get_all($query);
   json_response(true, 'تم جلب مدفوعات الفاتورة', $result);
+}
+
+// ============================================
+// PAYMENT METHODS FUNCTIONS (طرق الدفع) - Feature 5
+// ============================================
+
+function get_payment_methods() {
+  $activeOnly = isset($_GET['active']) && $_GET['active'] == '1';
+  $where = $activeOnly ? 'WHERE is_active = 1' : '';
+  $query = "SELECT * FROM payment_methods $where ORDER BY sort_order ASC, name ASC";
+  json_response(true, 'تم جلب طرق الدفع', get_all($query));
+}
+
+function add_payment_method() {
+  global $conn;
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (empty($data['name'])) {
+    json_response(false, 'اسم طريقة الدفع مطلوب');
+  }
+  $name = escape_string(trim($data['name']));
+  $notes = escape_string($data['notes'] ?? '');
+  $is_active = !empty($data['is_active']) ? 1 : 0;
+
+  if (get_row("SELECT id FROM payment_methods WHERE name = '$name'")) {
+    json_response(false, 'طريقة الدفع موجودة مسبقاً');
+  }
+
+  execute_query("INSERT INTO payment_methods (name, notes, is_active) VALUES ('$name', '$notes', $is_active)");
+  $id = $conn->insert_id;
+  audit_log('add_payment_method', 'payment_method', $id, ['name' => $data['name']]);
+  json_response(true, 'تم إضافة طريقة الدفع', ['id' => $id]);
+}
+
+function update_payment_method() {
+  global $conn;
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (empty($data['id']) || empty($data['name'])) {
+    json_response(false, 'بيانات ناقصة');
+  }
+  $id = intval($data['id']);
+  $name = escape_string(trim($data['name']));
+  $notes = escape_string($data['notes'] ?? '');
+  $is_active = !empty($data['is_active']) ? 1 : 0;
+
+  $dup = get_row("SELECT id FROM payment_methods WHERE name = '$name' AND id <> $id");
+  if ($dup) {
+    json_response(false, 'يوجد طريقة دفع أخرى بنفس الاسم');
+  }
+
+  execute_query("UPDATE payment_methods SET name = '$name', notes = '$notes', is_active = $is_active WHERE id = $id");
+  audit_log('update_payment_method', 'payment_method', $id, ['name' => $data['name']]);
+  json_response(true, 'تم تحديث طريقة الدفع');
+}
+
+function toggle_payment_method() {
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (empty($data['id'])) {
+    json_response(false, 'معرّف غير صحيح');
+  }
+  $id = intval($data['id']);
+  execute_query("UPDATE payment_methods SET is_active = NOT is_active WHERE id = $id");
+  audit_log('toggle_payment_method', 'payment_method', $id);
+  json_response(true, 'تم تحديث حالة طريقة الدفع');
+}
+
+function delete_payment_method() {
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (empty($data['id'])) {
+    json_response(false, 'معرّف غير صحيح');
+  }
+  $id = intval($data['id']);
+
+  // الحفاظ على السلامة التاريخية: لا نحذف طرق النظام، ولا نؤثر على الفواتير القديمة
+  $pm = get_row("SELECT is_system FROM payment_methods WHERE id = $id");
+  if (!$pm) {
+    json_response(false, 'طريقة الدفع غير موجودة');
+  }
+  if (intval($pm['is_system']) === 1) {
+    json_response(false, 'لا يمكن حذف طريقة دفع أساسية في النظام، يمكنك تعطيلها بدلاً من ذلك');
+  }
+  // الفواتير القديمة تحتفظ باسم طريقة الدفع كلقطة نصية، لذا الحذف لا يؤثر عليها.
+  execute_query("DELETE FROM payment_methods WHERE id = $id");
+  audit_log('delete_payment_method', 'payment_method', $id);
+  json_response(true, 'تم حذف طريقة الدفع');
+}
+
+// ============================================
+// CUSTOMERS FUNCTIONS (العملاء) - Feature 4
+// ============================================
+
+function get_customers() {
+  $search = isset($_GET['search']) ? escape_string(trim($_GET['search'])) : '';
+  $where = "WHERE is_active = 1";
+  if ($search !== '') {
+    $where .= " AND (name LIKE '%$search%' OR phone LIKE '%$search%')";
+  }
+  $query = "SELECT * FROM customers $where ORDER BY name ASC LIMIT 200";
+  json_response(true, 'تم جلب العملاء', get_all($query));
+}
+
+function get_customer() {
+  $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+  if ($id <= 0) json_response(false, 'معرّف غير صحيح');
+  $customer = get_row("SELECT * FROM customers WHERE id = $id");
+  if (!$customer) json_response(false, 'العميل غير موجود');
+  json_response(true, 'تم جلب العميل', $customer);
+}
+
+function add_customer() {
+  global $conn;
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (empty($data['name'])) {
+    json_response(false, 'اسم العميل مطلوب');
+  }
+  $name = escape_string(trim($data['name']));
+  $phone = escape_string($data['phone'] ?? '');
+  $email = escape_string($data['email'] ?? '');
+  $address = escape_string($data['address'] ?? '');
+  $notes = escape_string($data['notes'] ?? '');
+
+  execute_query("INSERT INTO customers (name, phone, email, address, notes)
+                 VALUES ('$name', '$phone', '$email', '$address', '$notes')");
+  $id = $conn->insert_id;
+  audit_log('add_customer', 'customer', $id, ['name' => $data['name']]);
+  json_response(true, 'تم إضافة العميل', ['id' => $id]);
+}
+
+function update_customer() {
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (empty($data['id']) || empty($data['name'])) {
+    json_response(false, 'بيانات ناقصة');
+  }
+  $id = intval($data['id']);
+  $name = escape_string(trim($data['name']));
+  $phone = escape_string($data['phone'] ?? '');
+  $email = escape_string($data['email'] ?? '');
+  $address = escape_string($data['address'] ?? '');
+  $notes = escape_string($data['notes'] ?? '');
+
+  execute_query("UPDATE customers SET name='$name', phone='$phone', email='$email', address='$address', notes='$notes' WHERE id = $id");
+  audit_log('update_customer', 'customer', $id);
+  json_response(true, 'تم تحديث العميل');
+}
+
+function toggle_customer_status() {
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (empty($data['id'])) json_response(false, 'معرّف غير صحيح');
+  $id = intval($data['id']);
+  execute_query("UPDATE customers SET is_active = NOT is_active WHERE id = $id");
+  audit_log('toggle_customer_status', 'customer', $id);
+  json_response(true, 'تم تحديث حالة العميل');
+}
+
+/**
+ * تقرير أرصدة العملاء: إجمالي المستحقات المتبقية لكل عميل.
+ */
+function get_customer_balances() {
+  $query = "SELECT c.id, c.name, c.phone, c.balance,
+                   COALESCE(SUM(i.remaining_amount), 0) AS outstanding,
+                   COUNT(CASE WHEN i.remaining_amount > 0 THEN 1 END) AS open_invoices
+            FROM customers c
+            LEFT JOIN invoices i ON i.customer_id = c.id
+            GROUP BY c.id, c.name, c.phone, c.balance
+            HAVING outstanding > 0 OR c.balance > 0
+            ORDER BY outstanding DESC";
+  json_response(true, 'تم جلب أرصدة العملاء', get_all($query));
+}
+
+// ============================================
+// PARTIAL PAYMENTS FUNCTIONS (الدفع الجزئي) - Feature 4
+// ============================================
+
+/**
+ * استلام دفعة إضافية على فاتورة آجلة/جزئية، وتحديث الحالة والرصيد ذرّياً.
+ */
+function add_invoice_payment() {
+  global $conn;
+  $data = json_decode(file_get_contents('php://input'), true);
+  $invoice_id = intval($data['invoice_id'] ?? 0);
+  $amount = round(floatval($data['amount'] ?? 0), 2);
+  $payment_method_id = !empty($data['payment_method_id']) ? intval($data['payment_method_id']) : null;
+  $notes = escape_string($data['notes'] ?? '');
+
+  if ($invoice_id <= 0 || $amount <= 0) {
+    json_response(false, 'بيانات الدفعة غير صحيحة');
+  }
+
+  $payment_method_name = 'نقداً';
+  if ($payment_method_id) {
+    $pm = get_row("SELECT name FROM payment_methods WHERE id = $payment_method_id AND is_active = 1");
+    if ($pm) $payment_method_name = $pm['name'];
+  }
+
+  try {
+    $result = db_transaction(function($conn) use ($invoice_id, $amount, $payment_method_id, $payment_method_name, $notes) {
+      $invoice = get_row("SELECT id, remaining_amount, paid_amount, customer_id, status FROM invoices WHERE id = $invoice_id FOR UPDATE");
+      if (!$invoice) throw new Exception('الفاتورة غير موجودة');
+
+      $remaining = round(floatval($invoice['remaining_amount']), 2);
+      if ($remaining <= 0) throw new Exception('الفاتورة مسددة بالكامل');
+      if ($amount > $remaining + 0.001) throw new Exception('المبلغ المدفوع أكبر من المبلغ المتبقي (' . $remaining . ')');
+
+      $new_paid = round(floatval($invoice['paid_amount']) + $amount, 2);
+      $new_remaining = round($remaining - $amount, 2);
+      $new_status = ($new_remaining <= 0.001) ? 'paid' : 'partial';
+
+      $uid = current_user_id();
+      $uid_sql = $uid ? intval($uid) : 'NULL';
+      $pm_id_sql = $payment_method_id ? intval($payment_method_id) : 'NULL';
+      $pm_name_esc = $conn->real_escape_string($payment_method_name);
+      $notes_esc = $conn->real_escape_string($notes);
+
+      tx_query("INSERT INTO invoice_payments (invoice_id, amount, payment_method_id, payment_method_name, user_id, notes)
+                VALUES ($invoice_id, $amount, $pm_id_sql, '$pm_name_esc', $uid_sql, '$notes_esc')");
+
+      tx_query("UPDATE invoices SET paid_amount = $new_paid, remaining_amount = $new_remaining, status = '$new_status'
+                WHERE id = $invoice_id");
+
+      if (!empty($invoice['customer_id'])) {
+        $cid = intval($invoice['customer_id']);
+        tx_query("UPDATE customers SET balance = GREATEST(0, balance - $amount) WHERE id = $cid");
+      }
+
+      return ['paid_amount' => $new_paid, 'remaining_amount' => $new_remaining, 'status' => $new_status];
+    });
+
+    audit_log('add_invoice_payment', 'invoice', $invoice_id, ['amount' => $amount] + $result);
+    json_response(true, 'تم تسجيل الدفعة بنجاح', $result);
+
+  } catch (Exception $e) {
+    json_response(false, $e->getMessage());
+  }
+}
+
+function get_invoice_payments() {
+  $invoice_id = isset($_GET['invoice_id']) ? intval($_GET['invoice_id']) : 0;
+  if ($invoice_id <= 0) json_response(false, 'معرّف الفاتورة مطلوب');
+  $query = "SELECT ip.*, u.full_name AS user_name
+            FROM invoice_payments ip
+            LEFT JOIN users u ON ip.user_id = u.id
+            WHERE ip.invoice_id = $invoice_id
+            ORDER BY ip.created_at ASC";
+  json_response(true, 'تم جلب مدفوعات الفاتورة', get_all($query));
+}
+
+/**
+ * الفواتير غير المسددة بالكامل (آجلة/جزئية) - مع إمكانية البحث.
+ */
+function get_outstanding_invoices() {
+  $search = isset($_GET['search']) ? escape_string(trim($_GET['search'])) : '';
+  $where = "WHERE i.remaining_amount > 0 AND i.status IN ('partial','unpaid')";
+  if ($search !== '') {
+    $where .= " AND (i.invoice_number LIKE '%$search%' OR i.customer_name LIKE '%$search%' OR c.name LIKE '%$search%')";
+  }
+  $query = "SELECT i.id, i.invoice_number, i.total_amount, i.paid_amount, i.remaining_amount,
+                   i.status, i.created_at, i.customer_name, c.name AS customer_db_name, c.phone AS customer_phone
+            FROM invoices i
+            LEFT JOIN customers c ON i.customer_id = c.id
+            $where
+            ORDER BY i.created_at DESC
+            LIMIT 200";
+  $rows = get_all($query);
+  $totals = get_row("SELECT COALESCE(SUM(remaining_amount),0) AS total_outstanding,
+                            COUNT(*) AS count
+                     FROM invoices
+                     WHERE remaining_amount > 0 AND status IN ('partial','unpaid')");
+  json_response(true, 'تم جلب الفواتير الآجلة', ['invoices' => $rows, 'totals' => $totals]);
+}
+
+// ============================================
+// INVOICE RETURNS FUNCTIONS (المرتجعات) - Feature 1
+// ============================================
+
+/**
+ * البحث عن فاتورة لإجراء مرتجع، مع بنودها والكميات القابلة للإرجاع.
+ */
+function search_invoice_for_return() {
+  $number = isset($_GET['invoice_number']) ? escape_string(trim($_GET['invoice_number'])) : '';
+  $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+  if ($number === '' && $id <= 0) {
+    json_response(false, 'أدخل رقم الفاتورة');
+  }
+
+  $cond = $id > 0 ? "i.id = $id" : "i.invoice_number = '$number'";
+  $invoice = get_row("SELECT i.*, c.name AS customer_db_name, pm.name AS payment_method_name_db,
+                             u.full_name AS cashier_name, ic.name AS insurance_name
+                      FROM invoices i
+                      LEFT JOIN customers c ON i.customer_id = c.id
+                      LEFT JOIN payment_methods pm ON i.payment_method_id = pm.id
+                      LEFT JOIN users u ON i.cashier_id = u.id
+                      LEFT JOIN insurance_companies ic ON i.insurance_company_id = ic.id
+                      WHERE $cond");
+  if (!$invoice) {
+    json_response(false, 'الفاتورة غير موجودة');
+  }
+
+  $invoice_id = intval($invoice['id']);
+  $items = get_all("SELECT ii.*, p.name AS product_name,
+                           (ii.quantity - ii.returned_qty) AS returnable_qty
+                    FROM invoice_items ii
+                    JOIN products p ON ii.product_id = p.id
+                    WHERE ii.invoice_id = $invoice_id");
+
+  $invoice['items'] = $items;
+  json_response(true, 'تم العثور على الفاتورة', $invoice);
+}
+
+/**
+ * إرجاع منتج محدّد (أو جزء من كميته) من فاتورة - ذرّياً.
+ */
+function return_invoice_item() {
+  global $conn;
+  $data = json_decode(file_get_contents('php://input'), true);
+  $invoice_item_id = intval($data['invoice_item_id'] ?? 0);
+  $return_qty_units = intval($data['quantity'] ?? 0); // عدد الوحدات (بوحدة البيع) المراد إرجاعها
+  $reason = escape_string($data['reason'] ?? '');
+
+  if ($invoice_item_id <= 0 || $return_qty_units <= 0) {
+    json_response(false, 'بيانات المرتجع غير صحيحة');
+  }
+
+  try {
+    $result = db_transaction(function($conn) use ($invoice_item_id, $return_qty_units, $reason) {
+      $item = get_row("SELECT * FROM invoice_items WHERE id = $invoice_item_id FOR UPDATE");
+      if (!$item) throw new Exception('بند الفاتورة غير موجود');
+
+      $invoice_id = intval($item['invoice_id']);
+      $sold_units = intval($item['unit_quantity']);
+      $already_returned = intval($item['returned_qty']);
+      $remaining_units = $sold_units - $already_returned;
+
+      if ($return_qty_units > $remaining_units) {
+        throw new Exception('الكمية المطلوب إرجاعها تتجاوز الكمية المتاحة للإرجاع');
+      }
+
+      $unit_size = $sold_units > 0 ? intval($item['base_quantity']) / $sold_units : 1;
+      $base_return = intval(round($return_qty_units * $unit_size));
+      $unit_price = floatval($item['unit_price']);
+      $refund = round($unit_price * $return_qty_units, 2);
+      $unit = $conn->real_escape_string($item['unit']);
+      $product_id = intval($item['product_id']);
+
+      $invoice = get_row("SELECT * FROM invoices WHERE id = $invoice_id FOR UPDATE");
+      if (!$invoice) throw new Exception('الفاتورة غير موجودة');
+
+      // 1) إنشاء رأس المرتجع
+      $return_number = 'RET-' . date('YmdHis') . '-' . mt_rand(100, 999);
+      $rn_esc = $conn->real_escape_string($return_number);
+      $reason_esc = $conn->real_escape_string($reason);
+      $uid = current_user_id();
+      $uid_sql = $uid ? intval($uid) : 'NULL';
+
+      tx_query("INSERT INTO invoice_returns (return_number, invoice_id, return_type, total_refund, reason, user_id)
+                VALUES ('$rn_esc', $invoice_id, 'partial', $refund, '$reason_esc', $uid_sql)");
+      $return_id = $conn->insert_id;
+
+      tx_query("INSERT INTO invoice_return_items
+                 (return_id, invoice_item_id, product_id, quantity, unit, unit_quantity, base_quantity, unit_price, amount)
+                VALUES ($return_id, $invoice_item_id, $product_id, $base_return, '$unit', $return_qty_units, $base_return, $unit_price, $refund)");
+
+      // 2) تحديث الكمية المرتجعة للبند
+      $new_returned = $already_returned + $return_qty_units;
+      tx_query("UPDATE invoice_items SET returned_qty = $new_returned WHERE id = $invoice_item_id");
+
+      // 3) إعادة الكمية للمخزون + سجل المخزون
+      tx_query("UPDATE products SET stock = stock + $base_return,
+                       stock_strips = IFNULL(stock_strips, stock) + $base_return WHERE id = $product_id");
+      tx_query("INSERT INTO stock_history (product_id, quantity_change, operation_type, notes)
+                VALUES ($product_id, $base_return, 'return', 'مرتجع - $rn_esc')");
+
+      // 4) عكس قيمة المبيعات (سجل سالب في جدول sales)
+      tx_query("INSERT INTO sales (invoice_id, product_id, quantity, unit, unit_quantity, base_quantity, amount, sales_date)
+                VALUES ($invoice_id, $product_id, -$base_return, '$unit', -$return_qty_units, -$base_return, -$refund, CURDATE())");
+
+      // 5) تعديل إجماليات الفاتورة
+      adjust_invoice_after_return($conn, $invoice, $refund);
+
+      return ['return_id' => $return_id, 'return_number' => $return_number, 'refund' => $refund];
+    });
+
+    audit_log('return_invoice_item', 'invoice_item', $invoice_item_id, $result);
+    json_response(true, 'تم إرجاع المنتج بنجاح', $result);
+
+  } catch (Exception $e) {
+    json_response(false, $e->getMessage());
+  }
+}
+
+/**
+ * إرجاع الفاتورة بالكامل (كل الكميات المتبقية غير المرتجعة) - ذرّياً.
+ */
+function return_full_invoice() {
+  global $conn;
+  $data = json_decode(file_get_contents('php://input'), true);
+  $invoice_id = intval($data['invoice_id'] ?? 0);
+  $reason = escape_string($data['reason'] ?? '');
+  if ($invoice_id <= 0) json_response(false, 'معرّف الفاتورة غير صحيح');
+
+  try {
+    $result = db_transaction(function($conn) use ($invoice_id, $reason) {
+      $invoice = get_row("SELECT * FROM invoices WHERE id = $invoice_id FOR UPDATE");
+      if (!$invoice) throw new Exception('الفاتورة غير موجودة');
+      if ($invoice['status'] === 'returned') throw new Exception('الفاتورة مرتجعة بالكامل مسبقاً');
+
+      $items = get_all("SELECT * FROM invoice_items WHERE invoice_id = $invoice_id");
+      $total_refund = 0;
+      $any = false;
+
+      $return_number = 'RET-' . date('YmdHis') . '-' . mt_rand(100, 999);
+      $rn_esc = $conn->real_escape_string($return_number);
+      $reason_esc = $conn->real_escape_string($reason);
+      $uid = current_user_id();
+      $uid_sql = $uid ? intval($uid) : 'NULL';
+
+      tx_query("INSERT INTO invoice_returns (return_number, invoice_id, return_type, total_refund, reason, user_id)
+                VALUES ('$rn_esc', $invoice_id, 'full', 0, '$reason_esc', $uid_sql)");
+      $return_id = $conn->insert_id;
+
+      foreach ($items as $item) {
+        $sold_units = intval($item['unit_quantity']);
+        $already = intval($item['returned_qty']);
+        $remaining_units = $sold_units - $already;
+        if ($remaining_units <= 0) continue;
+        $any = true;
+
+        $unit_size = $sold_units > 0 ? intval($item['base_quantity']) / $sold_units : 1;
+        $base_return = intval(round($remaining_units * $unit_size));
+        $unit_price = floatval($item['unit_price']);
+        $refund = round($unit_price * $remaining_units, 2);
+        $unit = $conn->real_escape_string($item['unit']);
+        $product_id = intval($item['product_id']);
+        $item_id = intval($item['id']);
+
+        tx_query("INSERT INTO invoice_return_items
+                   (return_id, invoice_item_id, product_id, quantity, unit, unit_quantity, base_quantity, unit_price, amount)
+                  VALUES ($return_id, $item_id, $product_id, $base_return, '$unit', $remaining_units, $base_return, $unit_price, $refund)");
+
+        tx_query("UPDATE invoice_items SET returned_qty = $sold_units WHERE id = $item_id");
+
+        tx_query("UPDATE products SET stock = stock + $base_return,
+                         stock_strips = IFNULL(stock_strips, stock) + $base_return WHERE id = $product_id");
+        tx_query("INSERT INTO stock_history (product_id, quantity_change, operation_type, notes)
+                  VALUES ($product_id, $base_return, 'return', 'مرتجع كامل - $rn_esc')");
+
+        tx_query("INSERT INTO sales (invoice_id, product_id, quantity, unit, unit_quantity, base_quantity, amount, sales_date)
+                  VALUES ($invoice_id, $product_id, -$base_return, '$unit', -$remaining_units, -$base_return, -$refund, CURDATE())");
+
+        $total_refund += $refund;
+      }
+
+      if (!$any) throw new Exception('لا توجد كميات قابلة للإرجاع في هذه الفاتورة');
+      $total_refund = round($total_refund, 2);
+
+      tx_query("UPDATE invoice_returns SET total_refund = $total_refund WHERE id = $return_id");
+
+      // وضع علامة على الفاتورة كمرتجعة بالكامل
+      tx_query("UPDATE invoices
+                   SET status = 'returned',
+                       return_date = NOW(),
+                       returned_by = $uid_sql,
+                       remaining_amount = 0
+                 WHERE id = $invoice_id");
+
+      // تسوية رصيد العميل إن كان هناك مبلغ آجل
+      if (!empty($invoice['customer_id'])) {
+        $cid = intval($invoice['customer_id']);
+        $prev_remaining = round(floatval($invoice['remaining_amount']), 2);
+        if ($prev_remaining > 0) {
+          tx_query("UPDATE customers SET balance = GREATEST(0, balance - $prev_remaining) WHERE id = $cid");
+        }
+      }
+
+      return ['return_id' => $return_id, 'return_number' => $return_number, 'total_refund' => $total_refund];
+    });
+
+    audit_log('return_full_invoice', 'invoice', $invoice_id, $result);
+    json_response(true, 'تم إرجاع الفاتورة بالكامل', $result);
+
+  } catch (Exception $e) {
+    json_response(false, $e->getMessage());
+  }
+}
+
+/**
+ * تعديل إجماليات الفاتورة بعد إرجاع جزئي.
+ * يخفّض الإجمالي والمتبقي/المدفوع ويضبط الحالة، ويُسوّي رصيد العميل.
+ */
+function adjust_invoice_after_return($conn, $invoice, $refund) {
+  $invoice_id = intval($invoice['id']);
+  $new_total = round(floatval($invoice['total_amount']) - $refund, 2);
+  if ($new_total < 0) $new_total = 0;
+
+  $remaining = round(floatval($invoice['remaining_amount']), 2);
+  $paid = round(floatval($invoice['paid_amount']), 2);
+
+  // نخصم المبلغ المرتجع أولاً من المتبقي على العميل، ثم من المدفوع
+  $reduce_from_remaining = min($remaining, $refund);
+  $new_remaining = round($remaining - $reduce_from_remaining, 2);
+  $leftover = round($refund - $reduce_from_remaining, 2);
+  $new_paid = round(max(0, $paid - $leftover), 2);
+
+  // تسوية رصيد العميل بمقدار ما خُصم من المتبقي
+  if (!empty($invoice['customer_id']) && $reduce_from_remaining > 0) {
+    $cid = intval($invoice['customer_id']);
+    tx_query("UPDATE customers SET balance = GREATEST(0, balance - $reduce_from_remaining) WHERE id = $cid");
+  }
+
+  // تحديد الحالة: مرتجع جزئي إذا بقيت بنود، وإلا مرتجع كامل
+  $remaining_items = get_row("SELECT COALESCE(SUM(quantity - returned_qty),0) AS units
+                              FROM invoice_items WHERE invoice_id = $invoice_id");
+  $units_left = intval($remaining_items['units']);
+
+  if ($units_left <= 0) {
+    $status = 'returned';
+  } else {
+    $status = 'partially_returned';
+  }
+
+  tx_query("UPDATE invoices
+               SET total_amount = $new_total,
+                   remaining_amount = $new_remaining,
+                   paid_amount = $new_paid,
+                   status = '$status'
+             WHERE id = $invoice_id");
+}
+
+/**
+ * تقرير الفواتير المرتجعة.
+ */
+function get_returns_report() {
+  $from = isset($_GET['from']) ? escape_string($_GET['from']) : date('Y-m-01');
+  $to = isset($_GET['to']) ? escape_string($_GET['to']) : date('Y-m-d');
+  $type = isset($_GET['type']) ? escape_string($_GET['type']) : '';
+
+  $where = "WHERE DATE(r.created_at) BETWEEN '$from' AND '$to'";
+  if ($type === 'full' || $type === 'partial') {
+    $where .= " AND r.return_type = '$type'";
+  }
+
+  $rows = get_all("SELECT r.id, r.return_number, r.return_type, r.total_refund, r.reason, r.created_at,
+                          i.invoice_number, i.customer_name, u.full_name AS user_name
+                   FROM invoice_returns r
+                   JOIN invoices i ON r.invoice_id = i.id
+                   LEFT JOIN users u ON r.user_id = u.id
+                   $where
+                   ORDER BY r.created_at DESC");
+
+  $totals = get_row("SELECT COUNT(*) AS count, COALESCE(SUM(total_refund),0) AS total_refund
+                     FROM invoice_returns r $where");
+
+  json_response(true, 'تم جلب تقرير المرتجعات', ['returns' => $rows, 'totals' => $totals]);
+}
+
+/**
+ * تقرير المنتجات المرتجعة.
+ */
+function get_returned_products_report() {
+  $from = isset($_GET['from']) ? escape_string($_GET['from']) : date('Y-m-01');
+  $to = isset($_GET['to']) ? escape_string($_GET['to']) : date('Y-m-d');
+
+  $rows = get_all("SELECT p.id, p.name AS product_name,
+                          SUM(ri.base_quantity) AS total_base_qty,
+                          SUM(ri.quantity) AS total_units,
+                          SUM(ri.amount) AS total_refund,
+                          COUNT(*) AS times_returned
+                   FROM invoice_return_items ri
+                   JOIN invoice_returns r ON ri.return_id = r.id
+                   JOIN products p ON ri.product_id = p.id
+                   WHERE DATE(r.created_at) BETWEEN '$from' AND '$to'
+                   GROUP BY p.id, p.name
+                   ORDER BY total_refund DESC");
+
+  json_response(true, 'تم جلب تقرير المنتجات المرتجعة', $rows);
+}
+
+/**
+ * إحصائيات المرتجعات.
+ */
+function get_return_stats() {
+  $from = isset($_GET['from']) ? escape_string($_GET['from']) : date('Y-m-01');
+  $to = isset($_GET['to']) ? escape_string($_GET['to']) : date('Y-m-d');
+
+  $stats = get_row("SELECT
+                      COUNT(*) AS total_returns,
+                      COALESCE(SUM(total_refund),0) AS total_refund,
+                      SUM(CASE WHEN return_type='full' THEN 1 ELSE 0 END) AS full_returns,
+                      SUM(CASE WHEN return_type='partial' THEN 1 ELSE 0 END) AS partial_returns
+                    FROM invoice_returns
+                    WHERE DATE(created_at) BETWEEN '$from' AND '$to'");
+
+  // مبيعات الفترة لحساب نسبة المرتجعات
+  $sales = get_row("SELECT COALESCE(SUM(amount),0) AS net_sales FROM sales WHERE sales_date BETWEEN '$from' AND '$to'");
+  $stats['net_sales'] = $sales['net_sales'];
+
+  json_response(true, 'تم جلب إحصائيات المرتجعات', $stats);
+}
+
+// ============================================
+// INSURANCE FUNCTIONS (التأمين الصحي) - Feature 2
+// ============================================
+
+function get_insurance_companies() {
+  $activeOnly = isset($_GET['active']) && $_GET['active'] == '1';
+  $where = $activeOnly ? 'WHERE is_active = 1' : '';
+  json_response(true, 'تم جلب شركات التأمين', get_all("SELECT * FROM insurance_companies $where ORDER BY name ASC"));
+}
+
+function get_insurance_company() {
+  $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+  if ($id <= 0) json_response(false, 'معرّف غير صحيح');
+  $row = get_row("SELECT * FROM insurance_companies WHERE id = $id");
+  if (!$row) json_response(false, 'الشركة غير موجودة');
+  json_response(true, 'تم جلب الشركة', $row);
+}
+
+function add_insurance_company() {
+  global $conn;
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (empty($data['name'])) json_response(false, 'اسم الشركة مطلوب');
+  $name = escape_string(trim($data['name']));
+  $pct = round(floatval($data['discount_percentage'] ?? 0), 2);
+  if ($pct < 0 || $pct > 100) json_response(false, 'نسبة الخصم يجب أن تكون بين 0 و 100');
+  $notes = escape_string($data['notes'] ?? '');
+  $is_active = !empty($data['is_active']) ? 1 : 0;
+
+  execute_query("INSERT INTO insurance_companies (name, discount_percentage, notes, is_active)
+                 VALUES ('$name', $pct, '$notes', $is_active)");
+  $id = $conn->insert_id;
+  audit_log('add_insurance_company', 'insurance_company', $id, ['name' => $data['name'], 'pct' => $pct]);
+  json_response(true, 'تم إضافة شركة التأمين', ['id' => $id]);
+}
+
+function update_insurance_company() {
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (empty($data['id']) || empty($data['name'])) json_response(false, 'بيانات ناقصة');
+  $id = intval($data['id']);
+  $name = escape_string(trim($data['name']));
+  $pct = round(floatval($data['discount_percentage'] ?? 0), 2);
+  if ($pct < 0 || $pct > 100) json_response(false, 'نسبة الخصم يجب أن تكون بين 0 و 100');
+  $notes = escape_string($data['notes'] ?? '');
+  $is_active = !empty($data['is_active']) ? 1 : 0;
+
+  execute_query("UPDATE insurance_companies SET name='$name', discount_percentage=$pct, notes='$notes', is_active=$is_active WHERE id = $id");
+  audit_log('update_insurance_company', 'insurance_company', $id);
+  json_response(true, 'تم تحديث شركة التأمين');
+}
+
+function toggle_insurance_company() {
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (empty($data['id'])) json_response(false, 'معرّف غير صحيح');
+  $id = intval($data['id']);
+  execute_query("UPDATE insurance_companies SET is_active = NOT is_active WHERE id = $id");
+  audit_log('toggle_insurance_company', 'insurance_company', $id);
+  json_response(true, 'تم تحديث حالة الشركة');
+}
+
+function delete_insurance_company() {
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (empty($data['id'])) json_response(false, 'معرّف غير صحيح');
+  $id = intval($data['id']);
+  // الفواتير القديمة تحتفظ بقيم insurance_due/discount، لذا الحذف لا يؤثر على سجلاتها المالية
+  $used = get_row("SELECT COUNT(*) AS c FROM invoices WHERE insurance_company_id = $id");
+  if ($used && intval($used['c']) > 0) {
+    json_response(false, 'لا يمكن حذف شركة مرتبطة بفواتير، يمكنك تعطيلها بدلاً من ذلك');
+  }
+  execute_query("DELETE FROM insurance_companies WHERE id = $id");
+  audit_log('delete_insurance_company', 'insurance_company', $id);
+  json_response(true, 'تم حذف شركة التأمين');
+}
+
+/**
+ * تقرير مطالبات شركة التأمين: المبالغ المستحقة على الشركة لتسويتها.
+ */
+function get_insurance_claims_report() {
+  $company_id = isset($_GET['company_id']) ? intval($_GET['company_id']) : 0;
+  $from = isset($_GET['from']) ? escape_string($_GET['from']) : date('Y-m-01');
+  $to = isset($_GET['to']) ? escape_string($_GET['to']) : date('Y-m-d');
+
+  $where = "WHERE i.insurance_company_id IS NOT NULL AND i.insurance_due > 0
+            AND DATE(i.created_at) BETWEEN '$from' AND '$to'";
+  if ($company_id > 0) {
+    $where .= " AND i.insurance_company_id = $company_id";
+  }
+
+  $rows = get_all("SELECT i.id, i.invoice_number, i.created_at,
+                          i.customer_name, COALESCE(c.name, i.customer_name) AS customer,
+                          i.total_amount, i.insurance_discount, i.insurance_due,
+                          ic.name AS company_name, ic.discount_percentage
+                   FROM invoices i
+                   JOIN insurance_companies ic ON i.insurance_company_id = ic.id
+                   LEFT JOIN customers c ON i.customer_id = c.id
+                   $where
+                   ORDER BY i.created_at DESC");
+
+  $totals = get_row("SELECT COUNT(*) AS count,
+                            COALESCE(SUM(i.total_amount),0) AS total_sales,
+                            COALESCE(SUM(i.insurance_discount),0) AS total_discount,
+                            COALESCE(SUM(i.insurance_due),0) AS total_claims
+                     FROM invoices i $where");
+
+  json_response(true, 'تم جلب تقرير مطالبات التأمين', ['claims' => $rows, 'totals' => $totals]);
 }
 
 ?>

@@ -324,13 +324,25 @@ function installDatabase($host, $user, $pass, $dbName, $pharmacyName, $adminUser
         $conn->query("
             CREATE TABLE `invoices` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
-                `invoice_number` varchar(20) NOT NULL,
+                `invoice_number` varchar(30) NOT NULL,
                 `branch_id` int(11) DEFAULT 1,
                 `cashier_id` int(11) DEFAULT 1,
+                `customer_id` int(11) DEFAULT NULL,
+                `customer_name` varchar(200) DEFAULT NULL,
                 `total_amount` decimal(10,2) NOT NULL CHECK (`total_amount` >= 0),
                 `tax_amount` decimal(10,2) DEFAULT 0.00,
                 `subtotal` decimal(10,2) NOT NULL,
+                `discount_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
                 `payment_method` varchar(50) DEFAULT NULL,
+                `payment_method_id` int(11) DEFAULT NULL,
+                `status` enum('paid','partial','unpaid','returned','partially_returned') NOT NULL DEFAULT 'paid',
+                `paid_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+                `remaining_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+                `insurance_company_id` int(11) DEFAULT NULL,
+                `insurance_discount` decimal(10,2) NOT NULL DEFAULT 0.00,
+                `insurance_due` decimal(10,2) NOT NULL DEFAULT 0.00,
+                `return_date` datetime DEFAULT NULL,
+                `returned_by` int(11) DEFAULT NULL,
                 `notes` text DEFAULT NULL,
                 `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
                 `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -339,6 +351,9 @@ function installDatabase($host, $user, $pass, $dbName, $pharmacyName, $adminUser
                 KEY `cashier_id` (`cashier_id`),
                 KEY `idx_invoice_number` (`invoice_number`),
                 KEY `idx_created_at` (`created_at`),
+                KEY `idx_status` (`status`),
+                KEY `idx_customer` (`customer_id`),
+                KEY `idx_insurance` (`insurance_company_id`),
                 CONSTRAINT `invoices_ibfk_1` FOREIGN KEY (`cashier_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
         ");
@@ -355,6 +370,7 @@ function installDatabase($host, $user, $pass, $dbName, $pharmacyName, $adminUser
                 `base_quantity` int(11) NOT NULL CHECK (`base_quantity` > 0),
                 `unit_price` decimal(10,2) NOT NULL,
                 `total_price` decimal(10,2) NOT NULL,
+                `returned_qty` int(11) NOT NULL DEFAULT 0,
                 `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
                 PRIMARY KEY (`id`),
                 KEY `idx_invoice` (`invoice_id`),
@@ -414,7 +430,147 @@ function installDatabase($host, $user, $pass, $dbName, $pharmacyName, $adminUser
                 UNIQUE KEY `setting_key` (`setting_key`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
         ");
-        
+
+        // جدول العملاء
+        $conn->query("
+            CREATE TABLE `customers` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `name` varchar(200) NOT NULL,
+                `phone` varchar(20) DEFAULT NULL,
+                `email` varchar(100) DEFAULT NULL,
+                `address` text DEFAULT NULL,
+                `balance` decimal(12,2) NOT NULL DEFAULT 0.00,
+                `notes` text DEFAULT NULL,
+                `is_active` tinyint(1) DEFAULT 1,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+                PRIMARY KEY (`id`),
+                KEY `idx_name` (`name`),
+                KEY `idx_phone` (`phone`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+        ");
+
+        // جدول طرق الدفع
+        $conn->query("
+            CREATE TABLE `payment_methods` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `name` varchar(100) NOT NULL,
+                `is_active` tinyint(1) NOT NULL DEFAULT 1,
+                `is_system` tinyint(1) NOT NULL DEFAULT 0,
+                `notes` text DEFAULT NULL,
+                `sort_order` int(11) DEFAULT 0,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `name` (`name`),
+                KEY `idx_active` (`is_active`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+        ");
+
+        // جدول شركات التأمين الصحي
+        $conn->query("
+            CREATE TABLE `insurance_companies` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `name` varchar(200) NOT NULL,
+                `discount_percentage` decimal(5,2) NOT NULL DEFAULT 0.00,
+                `is_active` tinyint(1) NOT NULL DEFAULT 1,
+                `notes` text DEFAULT NULL,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+                PRIMARY KEY (`id`),
+                KEY `idx_active` (`is_active`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+        ");
+
+        // جدول مرتجعات الفواتير
+        $conn->query("
+            CREATE TABLE `invoice_returns` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `return_number` varchar(30) NOT NULL,
+                `invoice_id` int(11) NOT NULL,
+                `return_type` enum('full','partial') NOT NULL DEFAULT 'partial',
+                `total_refund` decimal(10,2) NOT NULL DEFAULT 0.00,
+                `reason` text DEFAULT NULL,
+                `user_id` int(11) DEFAULT NULL,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `return_number` (`return_number`),
+                KEY `idx_invoice` (`invoice_id`),
+                KEY `idx_created` (`created_at`),
+                CONSTRAINT `invoice_returns_ibfk_1` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+        ");
+
+        // جدول عناصر المرتجعات
+        $conn->query("
+            CREATE TABLE `invoice_return_items` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `return_id` int(11) NOT NULL,
+                `invoice_item_id` int(11) DEFAULT NULL,
+                `product_id` int(11) NOT NULL,
+                `quantity` int(11) NOT NULL,
+                `unit` enum('strip','box','carton') DEFAULT 'strip',
+                `unit_quantity` int(11) NOT NULL DEFAULT 1,
+                `base_quantity` int(11) NOT NULL DEFAULT 1,
+                `unit_price` decimal(10,2) NOT NULL,
+                `amount` decimal(10,2) NOT NULL,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                PRIMARY KEY (`id`),
+                KEY `idx_return` (`return_id`),
+                KEY `idx_product` (`product_id`),
+                CONSTRAINT `invoice_return_items_ibfk_1` FOREIGN KEY (`return_id`) REFERENCES `invoice_returns` (`id`) ON DELETE CASCADE,
+                CONSTRAINT `invoice_return_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+        ");
+
+        // جدول مدفوعات الفواتير (الدفع الجزئي)
+        $conn->query("
+            CREATE TABLE `invoice_payments` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `invoice_id` int(11) NOT NULL,
+                `amount` decimal(10,2) NOT NULL,
+                `payment_method_id` int(11) DEFAULT NULL,
+                `payment_method_name` varchar(100) DEFAULT NULL,
+                `user_id` int(11) DEFAULT NULL,
+                `notes` text DEFAULT NULL,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                PRIMARY KEY (`id`),
+                KEY `idx_invoice` (`invoice_id`),
+                KEY `idx_created` (`created_at`),
+                CONSTRAINT `invoice_payments_ibfk_1` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+        ");
+
+        // جدول سجل التدقيق
+        $conn->query("
+            CREATE TABLE `audit_log` (
+                `id` bigint(20) NOT NULL AUTO_INCREMENT,
+                `user_id` int(11) DEFAULT NULL,
+                `username` varchar(100) DEFAULT NULL,
+                `action` varchar(80) NOT NULL,
+                `entity` varchar(60) DEFAULT NULL,
+                `entity_id` int(11) DEFAULT NULL,
+                `details` text DEFAULT NULL,
+                `ip_address` varchar(45) DEFAULT NULL,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                PRIMARY KEY (`id`),
+                KEY `idx_action` (`action`),
+                KEY `idx_entity` (`entity`, `entity_id`),
+                KEY `idx_created` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+        ");
+
+        // طرق الدفع الافتراضية
+        $conn->query("
+            INSERT INTO `payment_methods` (`name`, `is_active`, `is_system`, `sort_order`) VALUES
+            ('نقداً', 1, 1, 0),
+            ('فيزا', 1, 1, 1),
+            ('ماستركارد', 1, 1, 2),
+            ('فودافون كاش', 1, 1, 3),
+            ('إنستا باي', 1, 1, 4),
+            ('تحويل بنكي', 1, 1, 5)
+        ");
+
         // =============================================
         // إدخال البيانات الافتراضية
         // =============================================
@@ -487,7 +643,8 @@ function installDatabase($host, $user, $pass, $dbName, $pharmacyName, $adminUser
             ('tax_rate', '5'),
             ('currency_symbol', 'ج.م'),
             ('invoice_notes', 'شكراً لتعاملكم معنا'),
-            ('low_stock_threshold', '10')
+            ('low_stock_threshold', '10'),
+            ('uses_health_insurance', '0')
         ");
         
         // إعادة تفعيل فحص المفاتيح الأجنبية

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>إدارة طرق الدفع - صيدليات الحياة</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-styles.css">
+  <style>
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .category-form-card { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px; overflow: hidden; }
+    .category-form-header { background: linear-gradient(135deg, var(--primary) 0%, #0e7490 100%); color: white; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+    .category-form-header h2 { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; margin: 0; }
+    .category-form-body { padding: 24px; }
+    .form-collapsed .category-form-body { display: none; }
+    .toggle-form-btn { background: rgba(255,255,255,0.2); color: white; border: none; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .badge-active { background: #d1fae5; color: #059669; }
+    .badge-inactive { background: #fee2e2; color: #dc2626; }
+    .badge-system { background: #e0e7ff; color: #4338ca; margin-right: 6px; }
+  </style>
+</head>
+<body>
+  <script src="./sidebar.js"></script>
+
+  <main>
+    <div class="topbar">
+      <h1><i class="fas fa-credit-card"></i> إدارة طرق الدفع</h1>
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-name" id="userDisplay">مرحباً</div>
+      </div>
+    </div>
+
+    <div class="category-form-card form-collapsed" id="formCard">
+      <div class="category-form-header" onclick="toggleForm()">
+        <h2><i class="fas fa-plus-circle"></i> إضافة طريقة دفع جديدة</h2>
+        <button class="toggle-form-btn" id="toggleBtn"><i class="fas fa-chevron-down" id="toggleIcon"></i></button>
+      </div>
+      <div class="category-form-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">اسم طريقة الدفع</label>
+            <input type="text" id="pmName" class="form-control" placeholder="مثال: فيزا، فودافون كاش">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ملاحظات</label>
+            <input type="text" id="pmNotes" class="form-control" placeholder="ملاحظات (اختياري)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">الحالة</label>
+            <select id="pmActive" class="form-control">
+              <option value="1">نشطة</option>
+              <option value="0">غير نشطة</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top:12px;">
+          <button id="addBtn" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة</button>
+          <button type="button" class="btn btn-secondary" onclick="toggleForm()"><i class="fas fa-times"></i> إغلاق</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-list"></i> طرق الدفع المسجلة</h3></div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table" id="pmTable">
+            <thead>
+              <tr><th>الاسم</th><th>ملاحظات</th><th>الحالة</th><th>الإجراءات</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./auth-check.js"></script>
+  <script>
+    const apiBase = '../api.php';
+    let isFormCollapsed = true;
+
+    async function checkAuthAndRedirect() {
+      try {
+        const res = await fetch('../api.php?action=check_session', { credentials: 'include' });
+        const json = await res.json();
+        if (!json.success) { window.location.href = '../login.php'; return false; }
+        const user = json.data;
+        if (user.role !== 'admin' && user.role !== 'manager') { window.location.href = '../index.html'; return false; }
+        const initials = user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2);
+        document.getElementById('userAvatar').textContent = initials;
+        document.getElementById('userDisplay').textContent = user.full_name;
+        return true;
+      } catch (err) { window.location.href = '../login.php'; return false; }
+    }
+
+    window.addEventListener('load', async () => {
+      if (await checkAuthAndRedirect()) loadMethods();
+    });
+
+    function toggleForm() {
+      isFormCollapsed = !isFormCollapsed;
+      const card = document.getElementById('formCard');
+      const icon = document.getElementById('toggleIcon');
+      card.classList.toggle('form-collapsed', isFormCollapsed);
+      icon.className = isFormCollapsed ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+    }
+
+    async function callAPI(action, method='GET', data=null) {
+      const opts = { method, credentials: 'include' };
+      if (method === 'POST' && data) { opts.headers = {'Content-Type':'application/json'}; opts.body = JSON.stringify(data); }
+      const res = await fetch(`${apiBase}?action=${action}`, opts);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'خطأ');
+      return json.data;
+    }
+
+    function escapeHtml(s){return String(s||'').replace(/[&<>"']/g, (c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);}
+
+    async function loadMethods() {
+      try {
+        const methods = await callAPI('get_payment_methods');
+        const tbody = document.querySelector('#pmTable tbody');
+        tbody.innerHTML = '';
+        methods.forEach(m => {
+          const isSystem = m.is_system == '1';
+          const active = m.is_active == '1';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>
+              <input data-id="${m.id}" class="edit-name form-control" value="${escapeHtml(m.name)}">
+              ${isSystem ? '<span class="badge badge-system">أساسية</span>' : ''}
+            </td>
+            <td><input data-id="${m.id}" class="edit-notes form-control" value="${escapeHtml(m.notes||'')}"></td>
+            <td><span class="badge ${active?'badge-active':'badge-inactive'}">${active?'نشطة':'غير نشطة'}</span></td>
+            <td>
+              <div class="btn-group">
+                <button class="btn btn-primary btn-sm" data-action="save" data-id="${m.id}" title="حفظ"><i class="fas fa-save"></i></button>
+                <button class="btn btn-secondary btn-sm" data-action="toggle" data-id="${m.id}" title="${active?'تعطيل':'تفعيل'}"><i class="fas fa-power-off"></i></button>
+                ${isSystem ? '' : `<button class="btn btn-danger btn-sm" data-action="delete" data-id="${m.id}" title="حذف"><i class="fas fa-trash"></i></button>`}
+              </div>
+            </td>`;
+          tbody.appendChild(tr);
+        });
+      } catch (err) { alert('خطأ في جلب طرق الدفع: ' + err.message); }
+    }
+
+    document.getElementById('addBtn').addEventListener('click', async () => {
+      const name = document.getElementById('pmName').value.trim();
+      const notes = document.getElementById('pmNotes').value.trim();
+      const is_active = document.getElementById('pmActive').value === '1';
+      if (!name) { alert('أدخل اسم طريقة الدفع'); return; }
+      try {
+        await callAPI('add_payment_method', 'POST', { name, notes, is_active });
+        document.getElementById('pmName').value = '';
+        document.getElementById('pmNotes').value = '';
+        await loadMethods();
+        alert('تمت الإضافة');
+      } catch (err) { alert('خطأ: ' + err.message); }
+    });
+
+    document.querySelector('#pmTable').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const action = btn.getAttribute('data-action');
+      const id = parseInt(btn.getAttribute('data-id'));
+      try {
+        if (action === 'save') {
+          const name = document.querySelector(`.edit-name[data-id='${id}']`).value.trim();
+          const notes = document.querySelector(`.edit-notes[data-id='${id}']`).value.trim();
+          if (!name) { alert('الاسم مطلوب'); return; }
+          // الحفاظ على الحالة الحالية عند الحفظ: نقرأها من الشارة
+          const active = btn.closest('tr').querySelector('.badge-active') !== null;
+          await callAPI('update_payment_method', 'POST', { id, name, notes, is_active: active });
+          alert('تم الحفظ'); await loadMethods();
+        } else if (action === 'toggle') {
+          await callAPI('toggle_payment_method', 'POST', { id });
+          await loadMethods();
+        } else if (action === 'delete') {
+          if (!confirm('هل تريد حذف طريقة الدفع؟ (الفواتير القديمة لن تتأثر)')) return;
+          await callAPI('delete_payment_method', 'POST', { id });
+          await loadMethods();
+        }
+      } catch (err) { alert('خطأ: ' + err.message); }
+    });
+  </script>
+</body>
+</html>

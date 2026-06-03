@@ -365,7 +365,7 @@
           <td><span class="invoice-number">${escapeHtml(invoice.invoice_number)}</span></td>
           <td><span class="date-time">${formatDateTime(invoice.created_at)}</span></td>
           <td><span class="amount">${parseFloat(invoice.total_amount).toFixed(2)} ${currencySymbol}</span></td>
-          <td><span class="payment-badge ${getPaymentClass(invoice.payment_method)}">${escapeHtml(invoice.payment_method || 'نقدي')}</span></td>
+          <td><span class="payment-badge ${getPaymentClass(invoice.payment_method)}">${escapeHtml(invoice.payment_method || 'نقدي')}</span> ${invoiceStatusBadge(invoice)}</td>
           <td>كاشير ${invoice.cashier_id}</td>
           <td>
             <button class="btn btn-primary btn-sm" onclick="viewInvoiceDetails(${invoice.id})">
@@ -377,6 +377,23 @@
       });
 
       document.getElementById('paginationInfo').textContent = `عرض ${filteredInvoices.length} من ${allInvoices.length}`;
+    }
+
+    // شارة حالة الفاتورة (مدفوعة/جزئية/غير مدفوعة/مرتجعة) - Feature 1 & 4
+    function invoiceStatusBadge(invoice) {
+      const map = {
+        paid: ['مدفوعة', '#d1fae5', '#059669'],
+        partial: ['مدفوعة جزئياً', '#fef3c7', '#d97706'],
+        unpaid: ['غير مدفوعة', '#fee2e2', '#dc2626'],
+        returned: ['مرتجعة', '#e5e7eb', '#4b5563'],
+        partially_returned: ['مرتجعة جزئياً', '#ede9fe', '#7c3aed']
+      };
+      const s = invoice.status || 'paid';
+      const m = map[s] || map.paid;
+      let extra = '';
+      const rem = parseFloat(invoice.remaining_amount || 0);
+      if (rem > 0) extra = ` (متبقي ${rem.toFixed(2)})`;
+      return `<span style="padding:3px 9px;border-radius:10px;font-size:11px;font-weight:600;background:${m[1]};color:${m[2]}">${m[0]}${extra}</span>`;
     }
 
     function applyFilters() {

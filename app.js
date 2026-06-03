@@ -36,18 +36,173 @@ const totalItemsEl = document.getElementById('totalItems');
 let appState = {
   data: null,
   activeCategory: null,
-  cart: JSON.parse(localStorage.getItem('pharmacy_cart_v1') || '{}'),
+  cart: {},               // مرجع لسلة النافذة النشطة (Feature 3)
+  windows: [],            // نوافذ البيع المتعددة [{ id, name, customerName, customerId, cart }]
+  activeWindowId: null,
   filteredProducts: [],
   currentSort: 'name',
   invoiceCounter: parseInt(localStorage.getItem('invoice_counter') || '0') + 1,
   currentInvoiceId: null
 };
 
-const CART_KEY = 'pharmacy_cart_v1';
+const CART_KEY = 'pharmacy_cart_v1';        // مفتاح قديم (نافذة واحدة) - يُرحَّل تلقائياً
+const WINDOWS_KEY = 'pharmacy_windows_v1';  // مفتاح نوافذ البيع المتعددة
 const INVOICE_KEY = 'invoice_counter';
 
-// Normalize cart structure (support legacy format)
-appState.cart = normalizeCart(appState.cart);
+// ============================================
+// Multi-Window Sales State (Feature 3)
+// ============================================
+
+let _windowSeq = 1;
+
+/** تحميل النوافذ من التخزين المحلي مع الترحيل من السلة القديمة. */
+function loadWindows() {
+  let windows = [];
+  try {
+    const raw = localStorage.getItem(WINDOWS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.windows)) {
+        windows = parsed.windows.map(w => ({
+          id: w.id,
+          name: w.name || ('نافذة ' + w.id),
+          customerName: w.customerName || '',
+          customerId: w.customerId || null,
+          cart: normalizeCart(w.cart || {})
+        }));
+        _windowSeq = parsed.seq || (Math.max(0, ...windows.map(w => w.id)) + 1);
+      }
+    }
+  } catch (e) { console.warn('Could not parse windows:', e); }
+
+  // الترحيل من السلة القديمة (نافذة واحدة)
+  if (windows.length === 0) {
+    const legacy = normalizeCart(JSON.parse(localStorage.getItem(CART_KEY) || '{}'));
+    windows = [{ id: 1, name: 'نافذة 1', customerName: '', customerId: null, cart: legacy }];
+    _windowSeq = 2;
+  }
+  return windows;
+}
+
+function persistWindows() {
+  localStorage.setItem(WINDOWS_KEY, JSON.stringify({ windows: appState.windows, seq: _windowSeq }));
+}
+
+function activeWindow() {
+  return appState.windows.find(w => w.id === appState.activeWindowId) || appState.windows[0];
+}
+
+/** إنشاء نافذة بيع جديدة والانتقال إليها. */
+function createSaleWindow() {
+  const id = _windowSeq++;
+  appState.windows.push({ id, name: 'نافذة ' + id, customerName: '', customerId: null, cart: {} });
+  switchSaleWindow(id);
+  showNotification('تم فتح نافذة بيع جديدة', 'success');
+}
+
+/** الانتقال إلى نافذة بيع أخرى دون فقدان بيانات النوافذ الأخرى. */
+function switchSaleWindow(id) {
+  const win = appState.windows.find(w => w.id === id);
+  if (!win) return;
+  appState.activeWindowId = id;
+  appState.cart = win.cart;
+  persistWindows();
+  renderWindowTabs();
+  renderCart();
+  refreshProductStockDisplays();
+}
+
+/** إغلاق نافذة بيع (مع تأكيد إذا كانت تحتوي منتجات). */
+function closeSaleWindow(id) {
+  const win = appState.windows.find(w => w.id === id);
+  if (!win) return;
+  if (Object.keys(win.cart).length > 0 && !confirm('النافذة تحتوي على منتجات، هل تريد إغلاقها وإلغاء بيعها؟')) return;
+
+  if (appState.windows.length === 1) {
+    // آخر نافذة: نفرّغها بدلاً من حذفها
+    win.cart = {};
+    win.customerName = '';
+    win.customerId = null;
+    appState.cart = win.cart;
+  } else {
+    appState.windows = appState.windows.filter(w => w.id !== id);
+    if (appState.activeWindowId === id) {
+      appState.activeWindowId = appState.windows[0].id;
+      appState.cart = appState.windows[0].cart;
+    }
+  }
+  persistWindows();
+  renderWindowTabs();
+  renderCart();
+  refreshProductStockDisplays();
+}
+
+/** حساب المجموع الفرعي لنافذة بيع (من السعر الحيّ أو لقطة السلة). */
+function windowSubtotal(win) {
+  let total = 0;
+  for (const item of Object.values(win.cart)) {
+    const product = findProduct(item.productId);
+    const price = product ? getUnitPrice(product, item.unit) : (item.unitPrice != null ? Number(item.unitPrice) : 0);
+    if (!Number.isNaN(price)) total += price * item.quantity;
+  }
+  return +total.toFixed(2);
+}
+
+/** عدد القطع (إجمالي الكميات) في نافذة. */
+function windowItemCount(win) {
+  return Object.values(win.cart).reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+}
+
+/** رسم شريط تبويبات نوافذ البيع — يعرض الاسم وعدد الأصناف والإجمالي. */
+function renderWindowTabs() {
+  const bar = document.getElementById('windowTabs');
+  if (!bar) return;
+  bar.innerHTML = '';
+  appState.windows.forEach(w => {
+    const count = windowItemCount(w);
+    const total = windowSubtotal(w);
+    const tab = document.createElement('div');
+    tab.className = 'window-tab' + (w.id === appState.activeWindowId ? ' active' : '');
+    tab.title = 'انقر للتبديل — انقر نقراً مزدوجاً لإعادة التسمية';
+    tab.innerHTML = `
+      <span class="window-tab-label" data-switch="${w.id}" data-rename="${w.id}">
+        <i class="fas fa-cart-shopping"></i>
+        <span class="window-tab-name">${escapeHtmlSafe(w.name)}</span>
+        ${count ? `<span class="window-tab-count">${count}</span>` : ''}
+        ${total > 0 ? `<span class="window-tab-total">${formatCurrency(total)}</span>` : ''}
+      </span>
+      <button class="window-tab-rename" data-rename-btn="${w.id}" title="إعادة تسمية"><i class="fas fa-pen"></i></button>
+      <button class="window-tab-close" data-close="${w.id}" title="إلغاء/إغلاق البيع">&times;</button>`;
+    bar.appendChild(tab);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className = 'window-tab-add';
+  addBtn.id = 'newWindowBtn';
+  addBtn.title = 'فتح بيع جديد';
+  addBtn.innerHTML = '<i class="fas fa-plus"></i> بيع جديد';
+  bar.appendChild(addBtn);
+}
+
+/** هروب آمن لاسم النافذة عند العرض. */
+function escapeHtmlSafe(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+/** إعادة تسمية نافذة بيع. */
+function renameSaleWindow(id) {
+  const win = appState.windows.find(w => w.id === id);
+  if (!win) return;
+  const name = prompt('اسم البيع / العميل:', win.name);
+  if (name === null) return;
+  win.name = name.trim() || ('نافذة ' + id);
+  persistWindows();
+  renderWindowTabs();
+}
+
+// تهيئة النوافذ
+appState.windows = loadWindows();
+appState.activeWindowId = appState.windows[0].id;
+appState.cart = appState.windows[0].cart;
 
 // ============================================
 // API Helper Functions
@@ -188,7 +343,12 @@ function normalizeCart(rawCart) {
       const quantity = Number(value.quantity ?? value.qty ?? 0);
       if (quantity > 0) {
         const cartKey = buildCartKey(productId, unit);
-        normalized[cartKey] = { productId, unit, quantity };
+        const item = { productId, unit, quantity };
+        // الحفاظ على لقطة السعر/الاسم إن وُجدت (للسلال المحفوظة)
+        if (value.name != null) item.name = value.name;
+        if (value.unitPrice != null) item.unitPrice = Number(value.unitPrice);
+        if (value.unitSize != null) item.unitSize = Number(value.unitSize);
+        normalized[cartKey] = item;
       }
     }
   });
@@ -501,6 +661,7 @@ function renderCart() {
     subTotalEl.textContent = '0.00 ' + pharmacyCurrency;
     taxEl.textContent = '0.00 ' + pharmacyCurrency;
     grandTotalEl.textContent = '0.00 ' + pharmacyCurrency;
+    renderWindowTabs();
     return;
   }
   
@@ -509,8 +670,30 @@ function renderCart() {
   
   cartItems.forEach(cartItem => {
     const product = findProduct(cartItem.productId);
-    if (!product) return;
-    
+
+    // عنصر غير قابل للحلّ من القائمة الحيّة (مثل منتج عُطّل بعد إضافته):
+    // نعرضه من اللقطة المخزّنة بدل إخفائه، ليبقى مرئياً وقابلاً للحذف ومحسوباً في الإجمالي.
+    if (!product) {
+      const snapPrice = cartItem.unitPrice != null ? Number(cartItem.unitPrice) : 0;
+      const snapSize = cartItem.unitSize != null ? Number(cartItem.unitSize) : 1;
+      const itemTotalS = snapPrice * cartItem.quantity;
+      subtotal += itemTotalS;
+      totalQtyStrips += cartItem.quantity * snapSize;
+      const elS = document.createElement('div');
+      elS.className = 'cart-item fade-in';
+      elS.innerHTML = `
+        <div class="cart-item-info">
+          <div class="cart-item-name">${escapeHtmlSafe(cartItem.name || ('#' + cartItem.productId))}
+            <span style="color:#d97706;font-size:11px">(غير متاح حالياً)</span></div>
+          <div class="cart-item-price">${formatCurrency(snapPrice)} × ${cartItem.quantity} ${getUnitLabel(cartItem.unit)}</div>
+        </div>
+        <div class="cart-item-controls">
+          <button class="btn-remove" data-remove="${buildCartKey(cartItem.productId, cartItem.unit)}"><i class="fas fa-trash"></i></button>
+        </div>`;
+      cartListEl.appendChild(elS);
+      return;
+    }
+
     const unitLabel = getUnitLabel(cartItem.unit);
     const unitPrice = getUnitPrice(product, cartItem.unit);
     const unitSize = getUnitSize(product, cartItem.unit);
@@ -562,6 +745,9 @@ function renderCart() {
   subTotalEl.textContent = formatCurrency(subtotal);
   taxEl.textContent = formatCurrency(tax);
   grandTotalEl.textContent = formatCurrency(total);
+
+  // تحديث عدّادات تبويبات النوافذ (Feature 3)
+  renderWindowTabs();
 }
 
 // ============================================
@@ -569,11 +755,15 @@ function renderCart() {
 // ============================================
 
 /**
- * Find product by ID
+ * Find product by ID.
+ * مقارنة متسامحة مع النوع: تطابق صارم أولاً ثم مقارنة نصية،
+ * لتفادي أي اختلاف بين السلاسل والأرقام في معرّفات المنتجات.
  */
 function findProduct(id) {
+  if (!appState.data || !appState.data.categories) return null;
+  const target = String(id);
   for (const category of appState.data.categories) {
-    const product = category.products.find(p => p.id === id);
+    const product = category.products.find(p => p.id === id || String(p.id) === target);
     if (product) return product;
   }
   return null;
@@ -623,7 +813,16 @@ function addToCart(productId, unit = 'strip', quantity = 1) {
     return;
   }
 
-  appState.cart[cartKey] = { productId, unit, quantity: newQty };
+  // لقطة بيانات المنتج وقت الإضافة: تجعل السلة مكتفية ذاتياً
+  // فلا يفشل إنشاء الفاتورة إذا تغيّرت قائمة المنتجات (تعطيل/نفاد) لاحقاً.
+  appState.cart[cartKey] = {
+    productId,
+    unit,
+    quantity: newQty,
+    name: product.name,
+    unitPrice: getUnitPrice(product, unit),
+    unitSize: getUnitSize(product, unit)
+  };
   saveCart();
   renderCart();
   refreshProductStockDisplays();
@@ -671,10 +870,14 @@ function updateQty(cartKey, quantity) {
 }
 
 /**
- * Save cart to localStorage
+ * Save cart to localStorage (window-aware).
+ * يعيد ربط سلة النافذة النشطة بمرجع appState.cart الحالي (لتغطية حالات إعادة الإسناد)
+ * ثم يحفظ جميع النوافذ.
  */
 function saveCart() {
-  localStorage.setItem(CART_KEY, JSON.stringify(appState.cart));
+  const win = activeWindow();
+  if (win) win.cart = appState.cart;
+  persistWindows();
 }
 
 /**
@@ -977,74 +1180,63 @@ function generateInvoice() {
 /**
  * Complete checkout
  */
-async function checkout() {
+/**
+ * بناء حمولة العناصر والمجموع الفرعي من السلة النشطة (يُستخدم في الدفع والطباعة).
+ *
+ * يستخدم بيانات المنتج الحيّة عند توفرها (لأحدث سعر)، وإلا يرجع إلى لقطة السعر
+ * المخزّنة في عنصر السلة. لا يُسقط أي عنصر بصمت: العناصر غير القابلة للحلّ
+ * تُجمع في قائمة unresolved ليتم الإبلاغ عنها بوضوح بدل فشل غامض.
+ *
+ * @returns {{items: Array, subtotal: number, unresolved: Array}}
+ */
+function buildCartPayload() {
+  let subtotal = 0;
+  const items = [];
+  const unresolved = [];
+
+  for (const item of Object.values(appState.cart)) {
+    const product = findProduct(item.productId);
+
+    // السعر/الحجم: من المنتج الحيّ أولاً، ثم من لقطة السلة
+    let unitPrice = product ? getUnitPrice(product, item.unit) : (item.unitPrice != null ? Number(item.unitPrice) : null);
+    let unitSize  = product ? getUnitSize(product, item.unit)  : (item.unitSize  != null ? Number(item.unitSize)  : null);
+
+    const pid = parseInt(item.productId);
+    const validId = !Number.isNaN(pid) && pid > 0;
+
+    if (!validId || unitPrice == null || Number.isNaN(unitPrice) || unitSize == null || Number.isNaN(unitSize)) {
+      unresolved.push({ productId: item.productId, name: item.name || product?.name || ('#' + item.productId), unit: item.unit });
+      continue;
+    }
+
+    const baseQty = item.quantity * unitSize;
+    subtotal += unitPrice * item.quantity;
+    items.push({
+      product_id: pid,
+      name: product ? product.name : (item.name || ('#' + pid)),
+      unit: item.unit,
+      unit_quantity: item.quantity,
+      base_quantity: baseQty,
+      unit_price: unitPrice
+    });
+  }
+
+  return { items, subtotal: +subtotal.toFixed(2), unresolved };
+}
+
+/**
+ * إتمام البيع: يفتح نافذة الدفع (طرق الدفع، العميل، التأمين، الدفع الجزئي).
+ * منطق الحفظ الفعلي في pos-extensions.js (submitCheckout).
+ */
+function checkout() {
   if (Object.keys(appState.cart).length === 0) {
     showNotification('السلة فارغة', 'error');
     return;
   }
-  
-  try {
-    // Calculate totals
-    let subtotal = 0;
-    Object.values(appState.cart).forEach(item => {
-      const product = findProduct(item.productId);
-      if (product) {
-        const unitPrice = getUnitPrice(product, item.unit);
-        subtotal += unitPrice * item.quantity;
-      }
-    });
-    
-    const tax_amount = +(subtotal * 0.05).toFixed(2);
-    
-    // Create invoice in database
-    const invoiceResponse = await callAPI('create_invoice', 'POST', {
-      branch_id: 1,
-      cashier_id: 1,
-      subtotal: subtotal,
-      tax_amount: tax_amount,
-      payment_method: 'cash'
-    });
-    
-    const invoiceId = invoiceResponse.invoice_id;
-    appState.currentInvoiceId = invoiceId;
-    
-    // Add items to invoice
-    for (const item of Object.values(appState.cart)) {
-      const product = findProduct(item.productId);
-      if (product) {
-        const unitPrice = getUnitPrice(product, item.unit);
-        const unitSize = getUnitSize(product, item.unit);
-        const baseQty = item.quantity * unitSize;
-        await callAPI('add_invoice_item', 'POST', {
-          invoice_id: invoiceId,
-          product_id: item.productId,
-          unit: item.unit,
-          unit_quantity: item.quantity,
-          base_quantity: baseQty,
-          quantity: baseQty,
-          unit_price: unitPrice
-        });
-      }
-    }
-    
-    // Reload products from the server so updated stock is reflected in the UI
-    try {
-      appState.data = await loadProducts();
-      renderCategories();
-      renderProducts();
-    } catch (err) {
-      console.warn('Failed to refresh products after checkout:', err);
-    }
-
-    showNotification('تم حفظ الفاتورة بنجاح', 'success');
-    generateInvoice();
-    appState.cart = {};
-    saveCart();
-    renderCart();
-    
-  } catch (error) {
-    console.error('Checkout error:', error);
-    showNotification('خطأ في إتمام البيع: ' + error.message, 'error');
+  if (typeof window.openCheckoutModal === 'function') {
+    window.openCheckoutModal();
+  } else {
+    showNotification('وحدة الدفع غير محمّلة', 'error');
   }
 }
 
@@ -1169,6 +1361,23 @@ showInvoiceBtn.addEventListener('click', generateInvoice);
 clearCartBtn.addEventListener('click', clearCart);
 checkoutBtn.addEventListener('click', checkout);
 
+// Window tabs (Feature 3) - delegated events
+document.addEventListener('click', (e) => {
+  const rn = e.target.closest('[data-rename-btn]');
+  if (rn) { renameSaleWindow(parseInt(rn.getAttribute('data-rename-btn'))); return; }
+  const cl = e.target.closest('[data-close]');
+  if (cl) { closeSaleWindow(parseInt(cl.getAttribute('data-close'))); return; }
+  const sw = e.target.closest('[data-switch]');
+  if (sw) { switchSaleWindow(parseInt(sw.getAttribute('data-switch'))); return; }
+  if (e.target.closest('#newWindowBtn')) { createSaleWindow(); }
+});
+
+// إعادة التسمية بالنقر المزدوج على التبويب
+document.addEventListener('dblclick', (e) => {
+  const lbl = e.target.closest('[data-rename]');
+  if (lbl) { renameSaleWindow(parseInt(lbl.getAttribute('data-rename'))); }
+});
+
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.key === 'p') {
@@ -1204,6 +1413,7 @@ async function initializeApp() {
 
   renderCategories();
   renderProducts();
+  renderWindowTabs();
   renderCart();
 
   // Auto-focus barcode/search field so scanner can read immediately
